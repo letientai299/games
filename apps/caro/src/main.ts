@@ -18,6 +18,7 @@ import {
 import { createBoard, placeMove, undoMove, type BoardState } from "./board";
 import { findBestMove } from "./ai/index";
 import { LEVELS } from "./ai/levels";
+import { loadSounds, playPlace, playWin } from "./sound";
 import materialSymbolsUrl from "./assets/fonts/material-symbols.ttf";
 
 const ICON_FONT = "material-symbols";
@@ -37,6 +38,7 @@ const k = kaplay({
 });
 
 k.loadFont(ICON_FONT, materialSymbolsUrl);
+loadSounds(k);
 
 const UI_HEIGHT = 44;
 const GAME_HEIGHT = HEIGHT - UI_HEIGHT;
@@ -347,6 +349,16 @@ k.scene("game", ({ mode, level = 2 }: { mode: GameMode; level?: AiLevel }) => {
     const color = player === "X" ? COLOR_X : COLOR_O;
     turnLabel.text = state.winner ? `${player} wins!` : `${player}'s turn`;
     turnLabel.color = k.rgb(...color);
+
+    // Play sound for the piece that was just placed
+    const lastMove = state.moves.at(-1);
+    if (lastMove) {
+      if (state.winner) {
+        playWin(k);
+      } else {
+        playPlace(k, lastMove.player);
+      }
+    }
 
     if (state.winner) {
       winCellsCache = new Set(
