@@ -1,10 +1,11 @@
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 interface GameMeta {
   name: string;
   displayName: string;
   description: string;
+  icon: string;
 }
 
 const base = process.argv[2] ?? "/";
@@ -24,10 +25,15 @@ const games: GameMeta[] = readdirSync(appsDir, { withFileTypes: true })
     const pkg = JSON.parse(
       readFileSync(join(appsDir, d.name, "package.json"), "utf-8"),
     );
+    const iconPath = join(appsDir, d.name, "favicon.svg");
+    const icon = existsSync(iconPath)
+      ? readFileSync(iconPath, "utf-8").trim()
+      : "";
     return {
       name: pkg.name,
       displayName: pkg.displayName ?? pkg.name,
       description: pkg.description ?? "",
+      icon,
     };
   })
   .sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -35,8 +41,11 @@ const games: GameMeta[] = readdirSync(appsDir, { withFileTypes: true })
 const cards = games
   .map(
     (g) => `      <a class="game-card" href="${base}${g.name}/">
-        <h2>${g.displayName}</h2>
-        <p>${g.description}</p>
+        ${g.icon ? `<div class="game-icon">${g.icon}</div>` : ""}
+        <div class="game-info">
+          <h2>${g.displayName}</h2>
+          <p>${g.description}</p>
+        </div>
       </a>`,
   )
   .join("\n");
@@ -46,6 +55,7 @@ const html = `<!doctype html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>Games</title>
     <style>
       * {
@@ -76,9 +86,12 @@ const html = `<!doctype html>
         max-width: 800px;
       }
       .game-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
         background: #16213e;
         border-radius: 12px;
-        padding: 1.5rem;
+        padding: 1rem 1.25rem;
         text-decoration: none;
         color: #e0e0e0;
         transition: transform 0.2s, background 0.2s;
@@ -87,13 +100,24 @@ const html = `<!doctype html>
         transform: translateY(-4px);
         background: #1a2a4e;
       }
+      .game-icon {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+      }
+      .game-icon svg {
+        width: 100%;
+        height: 100%;
+      }
+      .game-info {
+        min-width: 0;
+      }
       .game-card h2 {
-        font-size: 1.2rem;
-        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
         color: #fff;
       }
       .game-card p {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         opacity: 0.7;
       }
     </style>
