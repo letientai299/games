@@ -108,7 +108,7 @@ function clearSave() {
 k.scene("title", () => {
   k.add([
     k.text("Pokemon Match", { size: 40 }),
-    k.pos(k.center().x, 220),
+    k.pos(k.center().x, 200),
     k.anchor("center"),
     k.color(255, 255, 255),
   ]);
@@ -117,7 +117,7 @@ k.scene("title", () => {
   if (best > 0) {
     k.add([
       k.text(`Best: ${best}`, { size: 22 }),
-      k.pos(k.center().x, 280),
+      k.pos(k.center().x, 260),
       k.anchor("center"),
       k.color(180, 180, 180),
     ]);
@@ -130,18 +130,36 @@ k.scene("title", () => {
     k.go(scene, args);
   }
 
+  // Home button
+  const homeBtn = k.add([
+    k.rect(50, 50, { radius: 10 }),
+    k.pos(BOARD_PADDING, BOARD_PADDING),
+    k.color(60, 60, 100),
+    k.area(),
+    k.z(10),
+  ]);
+  k.add([
+    k.text("\u{1F3E0}", { size: 28 }),
+    k.pos(BOARD_PADDING + 25, BOARD_PADDING + 25),
+    k.anchor("center"),
+    k.z(11),
+  ]);
+  homeBtn.onClick(() => {
+    window.location.href = "/";
+  });
+
   if (save) {
     // Continue saved game
     const contBtn = k.add([
-      k.rect(220, 55, { radius: 12 }),
-      k.pos(k.center().x, 390),
+      k.rect(260, 60, { radius: 14 }),
+      k.pos(k.center().x, 380),
       k.anchor("center"),
       k.color(70, 130, 70),
       k.area(),
     ]);
     k.add([
-      k.text(`Continue (${save.score} pts)`, { size: 22 }),
-      k.pos(k.center().x, 390),
+      k.text(`\u{25B6}\u{FE0F}  Continue (${save.score})`, { size: 22 }),
+      k.pos(k.center().x, 380),
       k.anchor("center"),
       k.color(255, 255, 255),
     ]);
@@ -149,15 +167,15 @@ k.scene("title", () => {
 
     // New game
     const newBtn = k.add([
-      k.rect(220, 50, { radius: 12 }),
-      k.pos(k.center().x, 465),
+      k.rect(260, 55, { radius: 14 }),
+      k.pos(k.center().x, 460),
       k.anchor("center"),
       k.color(80, 80, 120),
       k.area(),
     ]);
     k.add([
-      k.text("New Game", { size: 22 }),
-      k.pos(k.center().x, 465),
+      k.text("\u{1F504}  New Game", { size: 22 }),
+      k.pos(k.center().x, 460),
       k.anchor("center"),
       k.color(200, 200, 200),
     ]);
@@ -166,16 +184,21 @@ k.scene("title", () => {
       unlockAndGo("game");
     });
   } else {
-    k.add([
-      k.text("Tap to Play", { size: 26 }),
+    // Play button
+    const playBtn = k.add([
+      k.rect(260, 70, { radius: 14 }),
       k.pos(k.center().x, 420),
       k.anchor("center"),
-      k.color(200, 200, 200),
+      k.color(70, 130, 70),
+      k.area(),
     ]);
-
-    canvas.addEventListener("pointerdown", () => unlockAndGo("game"), {
-      once: true,
-    });
+    k.add([
+      k.text("\u{25B6}\u{FE0F}  Play", { size: 30 }),
+      k.pos(k.center().x, 420),
+      k.anchor("center"),
+      k.color(255, 255, 255),
+    ]);
+    playBtn.onClick(() => unlockAndGo("game"));
   }
 });
 
@@ -238,30 +261,53 @@ k.scene("game", (args?: { save?: SaveData }) => {
     return Math.max(earned - hintsUsed, 0);
   }
 
-  // Hint button — below the board
-  const HINT_Y = BOARD_TOP + ROWS * CELL_SIZE + 40;
+  // Buttons below the board
+  const BTN_Y = BOARD_TOP + ROWS * CELL_SIZE + 40;
+
+  // Home button (left)
+  const homeBtn = k.add([
+    k.rect(55, 50, { radius: 10 }),
+    k.pos(BOARD_PADDING, BTN_Y),
+    k.anchor("left"),
+    k.color(60, 60, 100),
+    k.area(),
+    k.z(10),
+  ]);
+  k.add([
+    k.text("\u{1F3E0}", { size: 26 }),
+    k.pos(BOARD_PADDING + 27, BTN_Y),
+    k.anchor("center"),
+    k.z(11),
+  ]);
+  homeBtn.onClick(() => {
+    saveGame();
+    k.go("title");
+  });
+
+  // Hint button (center)
   const hintBtn = k.add([
-    k.rect(140, 50, { radius: 10 }),
-    k.pos(k.center().x, HINT_Y),
+    k.rect(160, 50, { radius: 10 }),
+    k.pos(k.center().x, BTN_Y),
     k.anchor("center"),
     k.color(80, 80, 140),
     k.area(),
     k.z(10),
   ]);
   const hintLabel = k.add([
-    k.text(`Hint (${getHintsRemaining()})`, { size: 22 }),
-    k.pos(k.center().x, HINT_Y),
+    k.text(`\u{1F4A1} ${getHintsRemaining()}`, { size: 22 }),
+    k.pos(k.center().x, BTN_Y),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(11),
   ]);
 
   function updateHintLabel() {
-    hintLabel.text = `Hint (${getHintsRemaining()})`;
+    const rem = getHintsRemaining();
+    hintLabel.text = `\u{1F4A1} ${rem}`;
     hintBtn.color = k.rgb(
-      getHintsRemaining() > 0 ? 80 : 50,
-      getHintsRemaining() > 0 ? 80 : 50,
-      getHintsRemaining() > 0 ? 140 : 80,
+      rem > 0 ? 80 : 50,
+      rem > 0 ? 80 : 50,
+      rem > 0 ? 140 : 80,
     );
   }
 
@@ -655,22 +701,37 @@ k.scene("gameover", ({ score }: { score: number }) => {
     ]);
   }
 
-  const btn = k.add([
-    k.rect(220, 60, { radius: 12 }),
-    k.pos(k.center().x, 460),
+  // Play Again button
+  const playBtn = k.add([
+    k.rect(250, 60, { radius: 14 }),
+    k.pos(k.center().x, 440),
     k.anchor("center"),
     k.color(70, 130, 70),
     k.area(),
   ]);
-
   k.add([
-    k.text("Play Again", { size: 26 }),
-    k.pos(k.center().x, 460),
+    k.text("\u{1F504}  Play Again", { size: 26 }),
+    k.pos(k.center().x, 440),
     k.anchor("center"),
     k.color(255, 255, 255),
   ]);
+  playBtn.onClick(() => k.go("game"));
 
-  btn.onClick(() => k.go("game"));
+  // Home button
+  const homeBtn = k.add([
+    k.rect(250, 55, { radius: 14 }),
+    k.pos(k.center().x, 520),
+    k.anchor("center"),
+    k.color(60, 60, 100),
+    k.area(),
+  ]);
+  k.add([
+    k.text("\u{1F3E0}  Home", { size: 24 }),
+    k.pos(k.center().x, 520),
+    k.anchor("center"),
+    k.color(200, 200, 200),
+  ]);
+  homeBtn.onClick(() => k.go("title"));
 });
 
 // Start
