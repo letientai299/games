@@ -30,6 +30,13 @@ import {
   getProfile,
   updateProfile,
 } from "./storage";
+import {
+  loadSounds,
+  unlockAudio,
+  playTap,
+  playCorrect,
+  playWrong,
+} from "./sound";
 
 const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
@@ -46,6 +53,7 @@ const k = kaplay({
 });
 
 k.loadFont(ICON_FONT, materialSymbolsUrl);
+loadSounds(k);
 
 // ---------------------------------------------------------------------------
 // Profiles scene
@@ -145,6 +153,7 @@ k.scene("profiles", () => {
       });
 
       row.onClick(() => {
+        unlockAudio();
         k.go("game", { profileName: p.name });
       });
     });
@@ -413,6 +422,7 @@ k.scene("game", ({ profileName }: { profileName: string }) => {
           if (phase !== "input") return;
           if (selected.has(i)) selected.delete(i);
           else selected.add(i);
+          playTap(k);
           updateCounter();
           const [r, g, b] = cellColor(i);
           cell.color = k.rgb(r, g, b);
@@ -496,6 +506,7 @@ k.scene("game", ({ profileName }: { profileName: string }) => {
     drawGrid();
 
     if (correct) {
+      playCorrect(k);
       statusLabel.color = k.rgb(...COLOR_CORRECT);
       if (profile!.streakType === "correct") {
         profile!.streak++;
@@ -511,6 +522,7 @@ k.scene("game", ({ profileName }: { profileName: string }) => {
         statusLabel.text = "Correct!";
       }
     } else {
+      playWrong(k);
       statusLabel.color = k.rgb(...COLOR_WRONG);
       if (profile!.streakType === "wrong") {
         profile!.streak++;
