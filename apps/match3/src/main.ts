@@ -148,57 +148,71 @@ k.scene("title", () => {
     window.location.href = "/";
   });
 
-  if (save) {
-    // Continue saved game
-    const contBtn = k.add([
-      k.rect(260, 60, { radius: 14 }),
-      k.pos(k.center().x, 380),
+  // Helper: button with icon (emoji) on the left, text on the right
+  const BTN_W = 260;
+  function addIconButton(
+    y: number,
+    icon: string,
+    label: string,
+    bg: [number, number, number],
+    fg: [number, number, number],
+    fontSize: number,
+    onClick: () => void,
+  ) {
+    const cx = k.center().x;
+    const btn = k.add([
+      k.rect(BTN_W, fontSize + 34, { radius: 14 }),
+      k.pos(cx, y),
       k.anchor("center"),
-      k.color(70, 130, 70),
+      k.color(...bg),
       k.area(),
     ]);
     k.add([
-      k.text(`\u{25B6}\u{FE0F}  Continue (${save.score})`, { size: 22 }),
-      k.pos(k.center().x, 380),
-      k.anchor("center"),
-      k.color(255, 255, 255),
+      k.text(icon, { size: fontSize }),
+      k.pos(cx - BTN_W / 2 + 20, y),
+      k.anchor("left"),
     ]);
-    contBtn.onClick(() => unlockAndGo("game", { save }));
+    k.add([
+      k.text(label, { size: fontSize }),
+      k.pos(cx + 10, y),
+      k.anchor("center"),
+      k.color(...fg),
+    ]);
+    btn.onClick(onClick);
+  }
 
-    // New game
-    const newBtn = k.add([
-      k.rect(260, 55, { radius: 14 }),
-      k.pos(k.center().x, 460),
-      k.anchor("center"),
-      k.color(80, 80, 120),
-      k.area(),
-    ]);
-    k.add([
-      k.text("\u{1F504}  New Game", { size: 22 }),
-      k.pos(k.center().x, 460),
-      k.anchor("center"),
-      k.color(200, 200, 200),
-    ]);
-    newBtn.onClick(() => {
-      clearSave();
-      unlockAndGo("game");
-    });
+  if (save) {
+    addIconButton(
+      380,
+      "\u{25B6}\u{FE0F}",
+      `Continue (${save.score})`,
+      [70, 130, 70],
+      [255, 255, 255],
+      22,
+      () => unlockAndGo("game", { save }),
+    );
+    addIconButton(
+      460,
+      "\u{1F504}",
+      "New Game",
+      [80, 80, 120],
+      [200, 200, 200],
+      22,
+      () => {
+        clearSave();
+        unlockAndGo("game");
+      },
+    );
   } else {
-    // Play button
-    const playBtn = k.add([
-      k.rect(260, 70, { radius: 14 }),
-      k.pos(k.center().x, 420),
-      k.anchor("center"),
-      k.color(70, 130, 70),
-      k.area(),
-    ]);
-    k.add([
-      k.text("\u{25B6}\u{FE0F}  Play", { size: 30 }),
-      k.pos(k.center().x, 420),
-      k.anchor("center"),
-      k.color(255, 255, 255),
-    ]);
-    playBtn.onClick(() => unlockAndGo("game"));
+    addIconButton(
+      420,
+      "\u{25B6}\u{FE0F}",
+      "Play",
+      [70, 130, 70],
+      [255, 255, 255],
+      30,
+      () => unlockAndGo("game"),
+    );
   }
 });
 
