@@ -153,7 +153,13 @@ function pvs(
   const opponent: Player = currentPlayer === "X" ? "O" : "X";
 
   if (depth <= 0) {
-    return evaluateLeaf(ctx.cells, currentPlayer, opponent, state.moves);
+    return evaluateLeaf(
+      ctx.cells,
+      currentPlayer,
+      opponent,
+      state.moves,
+      ctx.config.eval,
+    );
   }
 
   if (tracker.keys.size === 0) return 0;

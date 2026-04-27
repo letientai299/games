@@ -389,8 +389,8 @@ k.scene("game", ({ mode, level = 2 }: { mode: GameMode; level?: AiLevel }) => {
   function requestAiMove() {
     locked = true;
 
-    // Levels 1-2: instant, run synchronously
-    if (level <= 2) {
+    // Level 1: instant, run synchronously
+    if (level <= 1) {
       k.wait(0.2, () => {
         const move = findBestMove(state, level);
         placeMove(state, move.row, move.col);

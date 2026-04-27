@@ -58,21 +58,33 @@ function simpleLineScore(count: number, openEnds: number): number {
   return 1;
 }
 
+/** Max recent moves to evaluate at leaf nodes (performance cap). */
+const LEAF_WINDOW = 12;
+
 /**
- * Piece-based leaf evaluation: scores ALL occupied cells on the board.
- * Captures threats regardless of proximity to the last move.
+ * Leaf evaluation: scores recent moves on the board.
+ * Windows to the last LEAF_WINDOW moves for performance — early moves
+ * far from the action contribute mostly noise.
  */
 export function evaluateLeaf(
   cells: Map<number, Player>,
   me: Player,
   _opp: Player,
   moves: { row: number; col: number; player: Player }[],
+  evalMode: EvalMode = "simple",
 ): number {
   let myScore = 0;
   let oppScore = 0;
 
-  for (const { row, col, player } of moves) {
-    const s = evaluateSimple(cells, row, col, player);
+  const start = Math.max(0, moves.length - LEAF_WINDOW);
+  const detectForks = evalMode === "patterns-forks";
+  const usePatterns = evalMode !== "simple";
+
+  for (let i = start; i < moves.length; i++) {
+    const { row, col, player } = moves[i];
+    const s = usePatterns
+      ? evaluateCell(cells, row, col, player, detectForks)
+      : evaluateSimple(cells, row, col, player);
     if (player === me) myScore += s;
     else oppScore += s;
   }

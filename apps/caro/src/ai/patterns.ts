@@ -71,10 +71,10 @@ function scanLine(
     return "NONE";
   }
 
-  if (totalWithGapFwd >= WIN_LENGTH || totalWithGapBwd >= WIN_LENGTH) {
-    if (totalCont + 1 >= 4) {
-      return openEnds >= 2 ? "OPEN_FOUR" : "HALF_FOUR";
-    }
+  // Broken four: 4 pieces with one internal gap spanning WIN_LENGTH cells.
+  // totalCont+1 < 4 here (continuous four already returned above), so the
+  // gap must contribute the extra piece(s) to reach WIN_LENGTH - 1 total.
+  if (totalWithGapFwd >= WIN_LENGTH - 1 || totalWithGapBwd >= WIN_LENGTH - 1) {
     return "BROKEN_FOUR";
   }
 
