@@ -3,8 +3,8 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "displayName": "Memory Pairs",
-  "description": "Find matching pairs by flipping cards",
+  "displayName": "Light Up",
+  "description": "Remember which cells light up",
   "scripts": {
     "build": "GAME=$npm_package_name vite build -c ../../vite.game.config.ts"
   }
