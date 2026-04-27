@@ -1,6 +1,9 @@
 import { readdirSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv } from "vite";
+
+const gitSha = execSync("git rev-parse --short HEAD").toString().trim();
 
 const appsDir = resolve(import.meta.dirname, "apps");
 const apps = readdirSync(appsDir, { withFileTypes: true })
@@ -19,6 +22,9 @@ export default defineConfig(({ command, mode }) => {
     root: ".",
     base: command === "build" ? "/games/" : "/",
     appType: "mpa",
+    define: {
+      __GIT_SHA__: JSON.stringify(gitSha),
+    },
     plugins: [
       {
         name: "dev-routing",

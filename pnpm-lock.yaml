@@ -42,13 +42,15 @@ importers:
         specifier: 4.1.5
         version: 4.1.5(@types/node@25.6.0)(vite@8.0.10(@types/node@25.6.0))
 
-  apps/caro: {}
+  apps/caro:
+    dependencies:
+      '@trystero-p2p/nostr':
+        specifier: 0.23.1
+        version: 0.23.1
 
-  apps/fake-test-game: {}
+  apps/light-up: {}
 
   apps/match3: {}
-
-  apps/memory: {}
 
   apps/sliding-puzzle: {}
 
@@ -134,6 +136,9 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
+
+  '@noble/secp256k1@3.1.0':
+    resolution: {integrity: sha512-+F7iS7tUMaNGXcc9X3PjmjvuQnXEuSjCRNzVVA2xAcKXgCaP0dHYz4SFyt4FKNHef7sOP//xihowcySSS7PK9g==}
 
   '@oxc-project/types@0.127.0':
     resolution: {integrity: sha512-aIYXQBo4lCbO4z0R3FHeucQHpF46l2LbMdxRvqvuRuW2OxdnSkcng5B8+K12spgLDj93rtN3+J2Vac/TIO+ciQ==}
@@ -242,6 +247,12 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@trystero-p2p/core@0.23.1':
+    resolution: {integrity: sha512-+mnYUjTwujTk5yfPgajo0KaGAo9sOEDZd2SR3elAYSOUsn9KvTCaTUkisMLKSP6wEdxSaMBZwk6HpHQ3Pzpd2g==}
+
+  '@trystero-p2p/nostr@0.23.1':
+    resolution: {integrity: sha512-SXZn3hPkBNxx6w+/2SN+JkjUrl51XlL2f4iqhgu84X0S57FnldhTB/UZv+lF0yCb2MhndYIWzk+gACPPKT9K0A==}
 
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
@@ -978,6 +989,8 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
+  '@noble/secp256k1@3.1.0': {}
+
   '@oxc-project/types@0.127.0': {}
 
   '@pkgr/core@0.2.9': {}
@@ -1034,6 +1047,13 @@ snapshots:
   '@rolldown/pluginutils@1.0.0-rc.17': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@trystero-p2p/core@0.23.1': {}
+
+  '@trystero-p2p/nostr@0.23.1':
+    dependencies:
+      '@noble/secp256k1': 3.1.0
+      '@trystero-p2p/core': 0.23.1
 
   '@tybys/wasm-util@0.10.1':
     dependencies:

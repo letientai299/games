@@ -13,7 +13,7 @@ export const COLOR_UI_BG: [number, number, number] = [40, 40, 70];
 
 export type Player = "X" | "O";
 
-export type GameMode = "pvp" | "pvc";
+export type GameMode = "pvp" | "pvc" | "pvp-remote";
 
 export type AiLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
