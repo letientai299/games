@@ -15,6 +15,8 @@ export type Player = "X" | "O";
 
 export type GameMode = "pvp" | "pvc";
 
+export type AiLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
 // Right, down, down-right, down-left
 export const DIRECTIONS: [number, number][] = [
   [0, 1],
@@ -23,11 +25,14 @@ export const DIRECTIONS: [number, number][] = [
   [1, -1],
 ];
 
-export function encodeCell(row: number, col: number): string {
-  return `${row},${col}`;
+/** Bit-packed cell key: row in upper 16 bits, col in lower 16 bits. */
+export function encodeCell(row: number, col: number): number {
+  return ((row & 0xffff) << 16) | (col & 0xffff);
 }
 
-export function decodeCell(key: string): { row: number; col: number } {
-  const [row, col] = key.split(",").map(Number);
-  return { row, col };
+export function decodeCell(key: number): { row: number; col: number } {
+  return {
+    row: key >> 16,
+    col: (key << 16) >> 16,
+  };
 }

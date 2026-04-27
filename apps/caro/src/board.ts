@@ -12,7 +12,7 @@ export interface WinResult {
 }
 
 export interface BoardState {
-  cells: Map<string, Player>;
+  cells: Map<number, Player>;
   moves: Move[];
   currentPlayer: Player;
   winner: WinResult | null;
@@ -59,13 +59,12 @@ export function undoMove(state: BoardState): Move | null {
 }
 
 export function checkWinAt(
-  cells: Map<string, Player>,
+  cells: Map<number, Player>,
   row: number,
   col: number,
   player: Player,
 ): WinResult | null {
   for (const [dr, dc] of DIRECTIONS) {
-    // Walk backward to find the start of the line through (row, col)
     let startR = row;
     let startC = col;
     while (cells.get(encodeCell(startR - dr, startC - dc)) === player) {
@@ -73,7 +72,6 @@ export function checkWinAt(
       startC -= dc;
     }
 
-    // Walk forward from start, collecting consecutive cells
     const line: { row: number; col: number }[] = [];
     let r = startR;
     let c = startC;

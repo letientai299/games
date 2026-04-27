@@ -13,9 +13,14 @@ import {
   COLOR_UI_BG,
   encodeCell,
   type GameMode,
+  type AiLevel,
 } from "./constants";
 import { createBoard, placeMove, undoMove, type BoardState } from "./board";
-import { findBestMove } from "./ai";
+import { findBestMove } from "./ai/index";
+import { LEVELS } from "./ai/levels";
+import materialSymbolsUrl from "./assets/fonts/material-symbols.ttf";
+
+const ICON_FONT = "material-symbols";
 
 const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
@@ -31,8 +36,21 @@ const k = kaplay({
   canvas,
 });
 
+k.loadFont(ICON_FONT, materialSymbolsUrl);
+
 const UI_HEIGHT = 44;
 const GAME_HEIGHT = HEIGHT - UI_HEIGHT;
+
+let aiWorker: Worker | null = null;
+
+function getAiWorker(): Worker {
+  if (!aiWorker) {
+    aiWorker = new Worker(new URL("./ai/worker.ts", import.meta.url), {
+      type: "module",
+    });
+  }
+  return aiWorker;
+}
 
 k.scene("menu", () => {
   document.getElementById("loading")?.remove();
@@ -79,16 +97,95 @@ k.scene("menu", () => {
     k.anchor("center"),
     k.color(255, 255, 255),
   ]);
-  pvcBtn.onClick(() => k.go("game", { mode: "pvc" as GameMode }));
+  pvcBtn.onClick(() => k.go("level-select"));
 });
 
-k.scene("game", ({ mode }: { mode: GameMode }) => {
+k.scene("level-select", () => {
+  k.add([
+    k.text("Select Difficulty", { size: 36 }),
+    k.pos(WIDTH / 2, 80),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+  ]);
+
+  const cols = 2;
+  const btnW = 200;
+  const btnH = 70;
+  const gapX = 20;
+  const gapY = 16;
+  const gridW = cols * btnW + (cols - 1) * gapX;
+  const startX = (WIDTH - gridW) / 2;
+  const startY = 140;
+
+  const levelColors: [number, number, number][] = [
+    [60, 130, 60],
+    [70, 120, 70],
+    [70, 100, 130],
+    [100, 80, 130],
+    [130, 70, 90],
+    [140, 50, 50],
+  ];
+
+  for (let i = 1; i <= 6; i++) {
+    const config = LEVELS[i];
+    const r = Math.floor((i - 1) / cols);
+    const c = (i - 1) % cols;
+    const x = startX + c * (btnW + gapX) + btnW / 2;
+    const y = startY + r * (btnH + gapY) + btnH / 2;
+
+    const btn = k.add([
+      k.rect(btnW, btnH, { radius: 10 }),
+      k.pos(x, y),
+      k.anchor("center"),
+      k.color(...levelColors[i - 1]),
+      k.area(),
+    ]);
+
+    k.add([
+      k.text(config.name, { size: 22 }),
+      k.pos(x, y - 12),
+      k.anchor("center"),
+      k.color(255, 255, 255),
+    ]);
+
+    k.add([
+      k.text(config.subtitle, { size: 13 }),
+      k.pos(x, y + 14),
+      k.anchor("center"),
+      k.color(200, 200, 200),
+    ]);
+
+    btn.onClick(() =>
+      k.go("game", { mode: "pvc" as GameMode, level: i as AiLevel }),
+    );
+  }
+
+  const backBtn = k.add([
+    k.rect(120, 44, { radius: 8 }),
+    k.pos(WIDTH / 2, startY + 3 * (btnH + gapY) + 30),
+    k.anchor("center"),
+    k.color(80, 80, 110),
+    k.area(),
+  ]);
+
+  k.add([
+    k.text("Back", { size: 20 }),
+    k.pos(WIDTH / 2, startY + 3 * (btnH + gapY) + 30),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+  ]);
+
+  backBtn.onClick(() => k.go("menu"));
+});
+
+k.scene("game", ({ mode, level = 2 }: { mode: GameMode; level?: AiLevel }) => {
   let state: BoardState = createBoard();
   let camX = 0;
   let camY = 0;
   let locked = false;
   let uiClicked = false;
-  let winCellsCache: Set<string> | null = null;
+  let winCellsCache: Set<number> | null = null;
+  let aiMoveId = 0;
 
   let isPanning = false;
   let panStart: Vec2 | null = null;
@@ -112,8 +209,9 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
     k.fixed(),
   ]);
 
-  const menuBtn = k.add([
-    k.rect(70, 30, { radius: 6 }),
+  // Home button with house icon
+  const homeBtn = k.add([
+    k.rect(36, 30, { radius: 6 }),
     k.pos(WIDTH - 12, UI_HEIGHT / 2),
     k.anchor("right"),
     k.color(80, 80, 110),
@@ -122,8 +220,32 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
     k.fixed(),
   ]);
   k.add([
-    k.text("Menu", { size: 16 }),
-    k.pos(WIDTH - 47, UI_HEIGHT / 2),
+    k.text("\ue9b2", { size: 22, font: ICON_FONT }),
+    k.pos(WIDTH - 30, UI_HEIGHT / 2),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(102),
+    k.fixed(),
+  ]);
+  homeBtn.onClick(() => {
+    uiClicked = true;
+    aiMoveId++;
+    k.go("menu");
+  });
+
+  // Menu button with hamburger icon
+  const menuBtn = k.add([
+    k.rect(36, 30, { radius: 6 }),
+    k.pos(WIDTH - 54, UI_HEIGHT / 2),
+    k.anchor("right"),
+    k.color(80, 80, 110),
+    k.area(),
+    k.z(101),
+    k.fixed(),
+  ]);
+  k.add([
+    k.text("\ue5d2", { size: 22, font: ICON_FONT }),
+    k.pos(WIDTH - 72, UI_HEIGHT / 2),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(102),
@@ -133,14 +255,14 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
   let menuOpen = false;
   const DROPDOWN_W = 140;
   const DROPDOWN_ITEM_H = 38;
-  const DROPDOWN_X = WIDTH - 12 - DROPDOWN_W;
+  const DROPDOWN_X = WIDTH - 54 - DROPDOWN_W;
   const DROPDOWN_Y = UI_HEIGHT;
   const dropdownObjs: ReturnType<typeof k.add>[] = [];
 
   const menuOptions = [
-    { text: "Undo", action: doUndo },
-    { text: "Restart", action: doRestart },
-    { text: "New Game", action: () => k.go("menu") },
+    { text: "Undo", icon: "\ue166", action: doUndo },
+    { text: "Restart", icon: "\uf053", action: doRestart },
+    { text: "New Game", icon: "\ue3ba", action: () => k.go("menu") },
   ];
 
   for (let i = 0; i < menuOptions.length; i++) {
@@ -154,9 +276,18 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
       k.fixed(),
     ]);
     bg.hidden = true;
+    const icon = k.add([
+      k.text(menuOptions[i].icon, { size: 20, font: ICON_FONT }),
+      k.pos(DROPDOWN_X + 22, y + DROPDOWN_ITEM_H / 2),
+      k.anchor("center"),
+      k.color(200, 200, 220),
+      k.z(201),
+      k.fixed(),
+    ]);
+    icon.hidden = true;
     const label = k.add([
       k.text(menuOptions[i].text, { size: 18 }),
-      k.pos(DROPDOWN_X + DROPDOWN_W / 2, y + DROPDOWN_ITEM_H / 2),
+      k.pos(DROPDOWN_X + DROPDOWN_W / 2 + 12, y + DROPDOWN_ITEM_H / 2),
       k.anchor("center"),
       k.color(255, 255, 255),
       k.z(201),
@@ -170,7 +301,7 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
       closeMenu();
       action();
     });
-    dropdownObjs.push(bg, label);
+    dropdownObjs.push(bg, icon, label);
   }
 
   function openMenu() {
@@ -192,7 +323,6 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
   function doUndo() {
     if (locked || state.moves.length === 0) return;
     if (mode === "pvc") {
-      // Always undo in pairs so it stays the human's turn
       undoMove(state);
       if (state.moves.length > 0 && state.currentPlayer !== "X") {
         undoMove(state);
@@ -204,6 +334,7 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
   }
 
   function doRestart() {
+    aiMoveId++;
     state = createBoard();
     camX = 0;
     camY = 0;
@@ -217,7 +348,6 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
     turnLabel.text = state.winner ? `${player} wins!` : `${player}'s turn`;
     turnLabel.color = k.rgb(...color);
 
-    // Rebuild win cells cache
     if (state.winner) {
       winCellsCache = new Set(
         state.winner.cells.map((c) => encodeCell(c.row, c.col)),
@@ -225,6 +355,43 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
     } else {
       winCellsCache = null;
     }
+  }
+
+  function requestAiMove() {
+    locked = true;
+
+    // Levels 1-2: instant, run synchronously
+    if (level <= 2) {
+      k.wait(0.2, () => {
+        const move = findBestMove(state, level);
+        placeMove(state, move.row, move.col);
+        updateTurnLabel();
+        locked = false;
+      });
+      return;
+    }
+
+    // Levels 3+: run in Web Worker to avoid UI freeze
+    turnLabel.text = "Thinking...";
+    turnLabel.color = k.rgb(180, 180, 180);
+
+    const worker = getAiWorker();
+    const id = ++aiMoveId;
+    worker.onmessage = (e) => {
+      if (e.data.moveId !== id) return;
+      placeMove(state, e.data.row, e.data.col);
+      updateTurnLabel();
+      locked = false;
+    };
+    worker.postMessage({
+      moves: state.moves.map((m) => ({
+        row: m.row,
+        col: m.col,
+        player: m.player,
+      })),
+      level,
+      moveId: id,
+    });
   }
 
   k.onMousePress("left", () => {
@@ -284,13 +451,7 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
       updateTurnLabel();
 
       if (mode === "pvc" && !state.winner) {
-        locked = true;
-        k.wait(0.2, () => {
-          const move = findBestMove(state);
-          placeMove(state, move.row, move.col);
-          updateTurnLabel();
-          locked = false;
-        });
+        requestAiMove();
       }
     }
   }
