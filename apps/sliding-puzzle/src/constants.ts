@@ -2,15 +2,9 @@
 export const WIDTH = 480;
 export const HEIGHT = 720;
 
-// Grid sizes
-export type GridSize = 2 | 3;
-export const GRID_SIZES: GridSize[] = [2, 3];
-
-// Shuffle swap counts per grid size (random-walk from solved)
-export const SHUFFLE_SWAPS: Record<GridSize, number> = {
-  2: 20,
-  3: 100,
-};
+// Grid
+export const GRID_SIZE = 3;
+export const SHUFFLE_SWAPS = 100;
 
 // Layout
 export const BOARD_PADDING = 20;
@@ -43,18 +37,14 @@ export const POKEMON_IMAGES = [
 
 export type PokemonName = (typeof POKEMON_IMAGES)[number];
 
-export function cellSize(gridSize: GridSize): number {
-  return BOARD_SIZE / gridSize;
-}
+export const CELL_SIZE = BOARD_SIZE / GRID_SIZE;
 
 export function tileToPixel(
   col: number,
   row: number,
-  gridSize: GridSize,
 ): { x: number; y: number } {
-  const cs = cellSize(gridSize);
   return {
-    x: BOARD_PADDING + col * cs + cs / 2,
-    y: BOARD_TOP + row * cs + cs / 2,
+    x: BOARD_PADDING + col * CELL_SIZE + CELL_SIZE / 2,
+    y: BOARD_TOP + row * CELL_SIZE + CELL_SIZE / 2,
   };
 }

@@ -13,10 +13,9 @@ import {
   TILE_GAP,
   BEST_KEY_PREFIX,
   POKEMON_IMAGES,
-  GRID_SIZES,
-  cellSize,
+  GRID_SIZE,
+  CELL_SIZE,
   tileToPixel,
-  type GridSize,
   type PokemonName,
 } from "./constants";
 import { createBoard, shuffle, tryMove, isSolved, idxToPos } from "./board";
@@ -54,7 +53,6 @@ loadSounds(k);
 
 // Shared state between scenes
 let selectedImage: PokemonName | "custom" = "bulbasaur";
-let selectedSize: GridSize = 3;
 let customImageSrc: string | null = null;
 
 // File input for image upload
@@ -217,62 +215,8 @@ k.scene("menu", () => {
   fileInput.addEventListener("change", handleFile);
   k.onSceneLeave(() => fileInput.removeEventListener("change", handleFile));
 
-  // Difficulty selector
-  const diffY = uploadY + thumbSize / 2 + 40;
-  k.add([
-    k.text("Grid size", { size: 18 }),
-    k.pos(WIDTH / 2, diffY),
-    k.anchor("center"),
-    k.color(180, 180, 180),
-  ]);
-
-  const btnW = 70;
-  const btnGap = 12;
-  const totalW = GRID_SIZES.length * btnW + (GRID_SIZES.length - 1) * btnGap;
-  const diffStartX = WIDTH / 2 - totalW / 2 + btnW / 2;
-  const diffBtnY = diffY + 36;
-
-  let sizeHighlight: ReturnType<typeof k.add> | null = null;
-
-  function showSizeSelection(x: number) {
-    if (sizeHighlight) sizeHighlight.destroy();
-    sizeHighlight = k.add([
-      k.rect(btnW + 4, 38, { radius: 8 }),
-      k.pos(x, diffBtnY),
-      k.anchor("center"),
-      k.color(255, 215, 0),
-      k.z(1),
-    ]);
-  }
-
-  GRID_SIZES.forEach((size, i) => {
-    const x = diffStartX + i * (btnW + btnGap);
-    const btn = k.add([
-      k.rect(btnW, 34, { radius: 6 }),
-      k.pos(x, diffBtnY),
-      k.anchor("center"),
-      k.color(50, 50, 80),
-      k.area(),
-      k.z(2),
-    ]);
-    k.add([
-      k.text(`${size}x${size}`, { size: 18 }),
-      k.pos(x, diffBtnY),
-      k.anchor("center"),
-      k.color(255, 255, 255),
-      k.z(3),
-    ]);
-
-    if (size === selectedSize) showSizeSelection(x);
-
-    btn.onClick(() => {
-      selectedSize = size;
-      showSizeSelection(x);
-    });
-  });
-
   // Play button
-  const playY = diffBtnY + 60;
+  const playY = uploadY + thumbSize / 2 + 50;
   const playBtn = k.add([
     k.rect(160, 50, { radius: 8 }),
     k.pos(WIDTH / 2, playY),
@@ -296,20 +240,19 @@ k.scene("menu", () => {
     if (!imgSrc) return;
 
     const img = await loadImage(imgSrc);
-    const spriteKeys = sliceAndRegister(k, img, selectedSize);
-    k.go("game", { gridSize: selectedSize, spriteKeys });
+    const spriteKeys = sliceAndRegister(k, img);
+    k.go("game", { spriteKeys });
   });
 });
 
 // ── Game scene ──────────────────────────────────────────────
 
 interface GameArgs {
-  gridSize: GridSize;
   spriteKeys: string[][];
 }
 
-k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
-  const board = createBoard(gridSize);
+k.scene("game", ({ spriteKeys }: GameArgs) => {
+  const board = createBoard();
   shuffle(board, Math.random);
 
   let moves = 0;
@@ -318,8 +261,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
   let locked = false;
   let showNumbers = false;
 
-  const cs = cellSize(gridSize);
-  const blankTileValue = gridSize * gridSize - 1;
+  const blankTileValue = GRID_SIZE * GRID_SIZE - 1;
 
   // Kaplay's k.add() return type loses component info when stored in arrays.
   interface TileObj {
@@ -334,13 +276,13 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     ) => Promise<void>;
     destroy: () => void;
   }
-  const n = gridSize * gridSize;
+  const n = GRID_SIZE * GRID_SIZE;
   const tileObjs: (TileObj | null)[] = new Array(n).fill(null);
   const frameObjs: (TileObj | null)[] = new Array(n).fill(null);
   const numberObjs: (TileObj | null)[] = new Array(n).fill(null);
-  const tileSize = cs - TILE_GAP;
+  const tileSize = CELL_SIZE- TILE_GAP;
   const rawFrameSize = tileSize + Math.max(4, Math.round(tileSize * 0.04)) * 2;
-  const frameSize = Math.min(rawFrameSize, cs - 4);
+  const frameSize = Math.min(rawFrameSize, CELL_SIZE- 4);
 
   // Generate wooden frame sprite sized for this grid
   registerFrameSprite(k, tileSize);
@@ -458,8 +400,8 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     const solution = solve(board, 5000);
     if (!solution || solution.length === 0) return;
     const hintIdx = solution[0];
-    const { col: hc, row: hr } = idxToPos(hintIdx, gridSize);
-    const { x: hx, y: hy } = tileToPixel(hc, hr, gridSize);
+    const { col: hc, row: hr } = idxToPos(hintIdx);
+    const { x: hx, y: hy } = tileToPixel(hc, hr);
     hintHighlight = k.add([
       k.rect(tileSize + 4, tileSize + 4, { radius: 4 }),
       k.pos(hx, hy),
@@ -537,18 +479,18 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     playWin(k);
 
     // Save best
-    const key = BEST_KEY_PREFIX + gridSize;
+    const key = BEST_KEY_PREFIX + GRID_SIZE;
     const prev = parseInt(localStorage.getItem(key) ?? "999999");
     const isNewBest = moves < prev;
     if (isNewBest) localStorage.setItem(key, String(moves));
 
     // Spawn the blank tile so the full image is visible
-    const blankRow = Math.floor(board.blankIdx / gridSize);
-    const blankCol = board.blankIdx % gridSize;
-    const lastTileRow = Math.floor(blankTileValue / gridSize);
-    const lastTileCol = blankTileValue % gridSize;
+    const blankRow = Math.floor(board.blankIdx / GRID_SIZE);
+    const blankCol = board.blankIdx % GRID_SIZE;
+    const lastTileRow = Math.floor(blankTileValue / GRID_SIZE);
+    const lastTileCol = blankTileValue % GRID_SIZE;
     const lastSpriteKey = spriteKeys[lastTileRow][lastTileCol];
-    const { x: bx, y: by } = tileToPixel(blankCol, blankRow, gridSize);
+    const { x: bx, y: by } = tileToPixel(blankCol, blankRow);
 
     k.add([
       k.sprite(lastSpriteKey, { width: tileSize, height: tileSize }),
@@ -609,9 +551,9 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
   ]);
 
   // ── Static frames at every cell ──
-  for (let r = 0; r < gridSize; r++) {
-    for (let c = 0; c < gridSize; c++) {
-      const { x, y } = tileToPixel(c, r, gridSize);
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const { x, y } = tileToPixel(c, r);
       k.add([
         k.sprite(FRAME_SPRITE_KEY, { width: frameSize, height: frameSize }),
         k.pos(x, y),
@@ -623,9 +565,8 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
 
   // Blank-cell highlight frame (sits above static wood frames, below movable tiles)
   const initBlank = tileToPixel(
-    board.blankIdx % gridSize,
-    Math.floor(board.blankIdx / gridSize),
-    gridSize,
+    board.blankIdx % GRID_SIZE,
+    Math.floor(board.blankIdx / GRID_SIZE),
   );
   const blankFrame = k.add([
     k.sprite(BLANK_FRAME_SPRITE_KEY, {
@@ -643,11 +584,11 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
       const tileVal = board.tiles[i];
       if (tileVal === blankTileValue) continue;
 
-      const { col, row } = idxToPos(i, gridSize);
-      const tileCol = tileVal % gridSize;
-      const tileRow = Math.floor(tileVal / gridSize);
+      const { col, row } = idxToPos(i);
+      const tileCol = tileVal % GRID_SIZE;
+      const tileRow = Math.floor(tileVal / GRID_SIZE);
       const spriteKey = spriteKeys[tileRow][tileCol];
-      const { x, y } = tileToPixel(col, row, gridSize);
+      const { x, y } = tileToPixel(col, row);
 
       // Movable frame that slides with the tile
       frameObjs[i] = k.add([
@@ -667,7 +608,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
       ]) as unknown as TileObj;
 
       numberObjs[i] = k.add([
-        k.text(`${tileVal + 1}`, { size: Math.max(12, cs / 4) }),
+        k.text(`${tileVal + 1}`, { size: Math.max(12, CELL_SIZE/ 4) }),
         k.pos(x, y),
         k.anchor("center"),
         k.color(255, 255, 255),
@@ -687,12 +628,12 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
   // ── Animate a tile move ──
   function animateMove(clickIdx: number, countMove = true) {
     playSlide(k);
-    const blankCol = board.blankIdx % gridSize;
-    const blankRow = Math.floor(board.blankIdx / gridSize);
-    const targetPos = tileToPixel(blankCol, blankRow, gridSize);
+    const blankCol = board.blankIdx % GRID_SIZE;
+    const blankRow = Math.floor(board.blankIdx / GRID_SIZE);
+    const targetPos = tileToPixel(blankCol, blankRow);
     const oldBlankIdx = board.blankIdx;
-    const col = clickIdx % gridSize;
-    const row = Math.floor(clickIdx / gridSize);
+    const col = clickIdx % GRID_SIZE;
+    const row = Math.floor(clickIdx / GRID_SIZE);
 
     tryMove(board, col, row);
     if (countMove) {
@@ -702,9 +643,8 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
 
     // Move blank-cell highlight to the new blank position
     const newBlank = tileToPixel(
-      clickIdx % gridSize,
-      Math.floor(clickIdx / gridSize),
-      gridSize,
+      clickIdx % GRID_SIZE,
+      Math.floor(clickIdx / GRID_SIZE),
     );
     blankFrame.pos.x = newBlank.x;
     blankFrame.pos.y = newBlank.y;
@@ -756,21 +696,21 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     mx: number,
     my: number,
   ): { col: number; row: number } | null {
-    const col = Math.floor((mx - BOARD_PADDING) / cs);
-    const row = Math.floor((my - BOARD_TOP) / cs);
-    if (col < 0 || col >= gridSize || row < 0 || row >= gridSize) return null;
+    const col = Math.floor((mx - BOARD_PADDING) / CELL_SIZE);
+    const row = Math.floor((my - BOARD_TOP) / CELL_SIZE);
+    if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return null;
     return { col, row };
   }
 
   function isAdjacentToBlank(col: number, row: number): boolean {
-    const bc = board.blankIdx % gridSize;
-    const br = Math.floor(board.blankIdx / gridSize);
+    const bc = board.blankIdx % GRID_SIZE;
+    const br = Math.floor(board.blankIdx / GRID_SIZE);
     const dc = Math.abs(col - bc);
     const dr = Math.abs(row - br);
     return (dc === 1 && dr === 0) || (dc === 0 && dr === 1);
   }
 
-  const DRAG_THRESHOLD = cs * 0.25;
+  const DRAG_THRESHOLD = CELL_SIZE* 0.25;
   let dragStart: { col: number; row: number; mx: number; my: number } | null =
     null;
 
@@ -779,7 +719,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     const mp = k.mousePos();
     const gp = pixelToGrid(mp.x, mp.y);
     if (!gp) return;
-    const idx = gp.row * gridSize + gp.col;
+    const idx = gp.row * GRID_SIZE + gp.col;
     if (board.tiles[idx] === blankTileValue) return;
     dragStart = { col: gp.col, row: gp.row, mx: mp.x, my: mp.y };
   });
@@ -795,8 +735,8 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
 
     if (dist >= DRAG_THRESHOLD) {
       // Drag — determine direction toward the blank
-      const bc = board.blankIdx % gridSize;
-      const br = Math.floor(board.blankIdx / gridSize);
+      const bc = board.blankIdx % GRID_SIZE;
+      const br = Math.floor(board.blankIdx / GRID_SIZE);
       let targetCol = origin.col;
       let targetRow = origin.row;
       if (Math.abs(dx) > Math.abs(dy)) {
@@ -807,13 +747,13 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
       // Only accept if dragging toward the blank
       if (targetCol === bc && targetRow === br) {
         locked = true;
-        animateMove(origin.row * gridSize + origin.col);
+        animateMove(origin.row * GRID_SIZE + origin.col);
       }
     } else {
       // Tap — move if adjacent to blank
       if (isAdjacentToBlank(origin.col, origin.row)) {
         locked = true;
-        animateMove(origin.row * gridSize + origin.col);
+        animateMove(origin.row * GRID_SIZE + origin.col);
       }
     }
   });

@@ -1,5 +1,5 @@
 import type { KAPLAYCtx } from "kaplay";
-import type { GridSize } from "./constants";
+import { GRID_SIZE } from "./constants";
 
 let generation = 0;
 
@@ -123,19 +123,18 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
 export function sliceAndRegister(
   k: KAPLAYCtx,
   img: HTMLImageElement,
-  gridSize: GridSize,
 ): string[][] {
   generation++;
   const side = Math.min(img.width, img.height);
   const sx = (img.width - side) / 2;
   const sy = (img.height - side) / 2;
 
-  const tilePixels = Math.ceil(side / gridSize);
+  const tilePixels = Math.ceil(side / GRID_SIZE);
   const keys: string[][] = [];
 
-  for (let row = 0; row < gridSize; row++) {
+  for (let row = 0; row < GRID_SIZE; row++) {
     keys[row] = [];
-    for (let col = 0; col < gridSize; col++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
       const canvas = document.createElement("canvas");
       canvas.width = tilePixels;
       canvas.height = tilePixels;
@@ -166,9 +165,9 @@ export function sliceAndRegister(
   pctx.drawImage(img, sx, sy, side, side, 0, 0, previewSize, previewSize);
 
   // Darken the blank cell area
-  const cellPx = previewSize / gridSize;
-  const blankX = (gridSize - 1) * cellPx;
-  const blankY = (gridSize - 1) * cellPx;
+  const cellPx = previewSize / GRID_SIZE;
+  const blankX = (GRID_SIZE - 1) * cellPx;
+  const blankY = (GRID_SIZE - 1) * cellPx;
   pctx.fillStyle = "rgba(0, 0, 0, 0.6)";
   pctx.fillRect(blankX, blankY, cellPx, cellPx);
   pctx.strokeStyle = "rgba(100, 150, 255, 0.8)";

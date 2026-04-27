@@ -1,11 +1,12 @@
 import type { Board } from "./board";
+import { GRID_SIZE } from "./constants";
 
 /**
  * IDA* solver using Manhattan distance heuristic.
  * Returns array of board indices to click (in order), or null on timeout.
  */
 export function solve(board: Board, timeLimitMs = 3000): number[] | null {
-  const size = board.size;
+  const size = GRID_SIZE;
   const n = size * size;
   const blankVal = n - 1;
   const state = [...board.tiles];
