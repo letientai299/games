@@ -14,9 +14,30 @@ export function previewSpriteKey(): string {
 }
 
 export const FRAME_SPRITE_KEY = "wood_frame";
+export const BLANK_FRAME_SPRITE_KEY = "blank_frame";
 
-/** Generate and register a wooden frame sprite (called once). */
-export function registerFrameSprite(k: KAPLAYCtx, size: number): void {
+interface FrameColors {
+  base: string;
+  grain: string;
+  bevelLight: string;
+  bevelDark: string;
+}
+
+const WOOD_COLORS: FrameColors = {
+  base: "#8B6914",
+  grain: "rgba(60,40,0,0.25)",
+  bevelLight: "rgba(255,220,140,0.5)",
+  bevelDark: "rgba(40,20,0,0.5)",
+};
+
+const BLANK_COLORS: FrameColors = {
+  base: "#3A5A8C",
+  grain: "rgba(20,30,60,0.25)",
+  bevelLight: "rgba(140,180,255,0.5)",
+  bevelDark: "rgba(15,25,50,0.5)",
+};
+
+function generateFrameSprite(size: number, colors: FrameColors): string {
   const border = Math.max(4, Math.round(size * 0.04));
   const full = size + border * 2;
   const c = document.createElement("canvas");
@@ -24,14 +45,12 @@ export function registerFrameSprite(k: KAPLAYCtx, size: number): void {
   c.height = full;
   const ctx = c.getContext("2d")!;
 
-  // Wood base color
-  ctx.fillStyle = "#8B6914";
+  ctx.fillStyle = colors.base;
   ctx.beginPath();
   roundRect(ctx, 0, 0, full, full, border);
   ctx.fill();
 
-  // Horizontal grain lines
-  ctx.strokeStyle = "rgba(60,40,0,0.25)";
+  ctx.strokeStyle = colors.grain;
   ctx.lineWidth = 1;
   for (let y = 2; y < full; y += 3) {
     ctx.beginPath();
@@ -40,8 +59,7 @@ export function registerFrameSprite(k: KAPLAYCtx, size: number): void {
     ctx.stroke();
   }
 
-  // Light bevel on top-left edges
-  ctx.strokeStyle = "rgba(255,220,140,0.5)";
+  ctx.strokeStyle = colors.bevelLight;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(border, full - border);
@@ -49,18 +67,22 @@ export function registerFrameSprite(k: KAPLAYCtx, size: number): void {
   ctx.lineTo(full - border, border);
   ctx.stroke();
 
-  // Dark bevel on bottom-right edges
-  ctx.strokeStyle = "rgba(40,20,0,0.5)";
+  ctx.strokeStyle = colors.bevelDark;
   ctx.beginPath();
   ctx.moveTo(full - border, border);
   ctx.lineTo(full - border, full - border);
   ctx.lineTo(border, full - border);
   ctx.stroke();
 
-  // Cut out center (transparent hole for the image)
   ctx.clearRect(border, border, size, size);
 
-  k.loadSprite(FRAME_SPRITE_KEY, c.toDataURL());
+  return c.toDataURL();
+}
+
+/** Generate and register frame sprites (wood + blank variant). */
+export function registerFrameSprite(k: KAPLAYCtx, size: number): void {
+  k.loadSprite(FRAME_SPRITE_KEY, generateFrameSprite(size, WOOD_COLORS));
+  k.loadSprite(BLANK_FRAME_SPRITE_KEY, generateFrameSprite(size, BLANK_COLORS));
 }
 
 function roundRect(

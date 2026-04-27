@@ -26,6 +26,7 @@ import {
   loadImage,
   registerFrameSprite,
   FRAME_SPRITE_KEY,
+  BLANK_FRAME_SPRITE_KEY,
 } from "./slicer";
 import { solve } from "./solver";
 
@@ -80,6 +81,24 @@ function readFileAsDataURL(file: File): Promise<string> {
 // ── Menu scene ──────────────────────────────────────────────
 
 k.scene("menu", () => {
+  // Home button
+  const homeBtn = k.add([
+    k.rect(50, 50, { radius: 10 }),
+    k.pos(BOARD_PADDING, BOARD_PADDING),
+    k.color(60, 60, 100),
+    k.area(),
+    k.z(10),
+  ]);
+  k.add([
+    k.text("\u{1F3E0}", { size: 28 }),
+    k.pos(BOARD_PADDING + 25, BOARD_PADDING + 25),
+    k.anchor("center"),
+    k.z(11),
+  ]);
+  homeBtn.onClick(() => {
+    window.location.href = "/";
+  });
+
   // Title
   k.add([
     k.text("Image Scramble", { size: 36 }),
@@ -417,6 +436,9 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
   let hintHighlight: ReturnType<typeof k.add> | null = null;
   let solving = false;
 
+  // Bottom button game objects (destroyed on win to make room for New Game)
+  const bottomObjs: ReturnType<typeof k.add>[] = [];
+
   // Hint button
   const hintBtn = k.add([
     k.rect(btnW, btnH, { radius: 8 }),
@@ -426,13 +448,15 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     k.area(),
     k.z(10),
   ]);
-  k.add([
+  bottomObjs.push(hintBtn);
+  const hintLabel = k.add([
     k.text("Hint", { size: 18 }),
     k.pos(WIDTH / 2 - btnW / 2 - btnSpacing / 2, bottomY),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(11),
   ]);
+  bottomObjs.push(hintLabel);
 
   hintBtn.onClick(() => {
     if (locked || !running || solving) return;
@@ -470,13 +494,15 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     k.area(),
     k.z(10),
   ]);
-  k.add([
+  bottomObjs.push(solveBtn);
+  const solveLabel = k.add([
     k.text("Solve", { size: 18 }),
     k.pos(WIDTH / 2 + btnW / 2 + btnSpacing / 2, bottomY),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(11),
   ]);
+  bottomObjs.push(solveLabel);
 
   const solvingLabel = k.add([
     k.text("", { size: 14 }),
@@ -485,6 +511,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     k.color(255, 200, 100),
     k.z(11),
   ]);
+  bottomObjs.push(solvingLabel);
 
   solveBtn.onClick(async () => {
     if (locked || !running || solving) return;
@@ -511,8 +538,75 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     }
 
     solving = false;
-    solvingLabel.text = "";
   });
+
+  // ── Win state (stay on board) ──
+  function showWinState() {
+    running = false;
+
+    // Save best
+    const key = BEST_KEY_PREFIX + gridSize;
+    const prev = parseInt(localStorage.getItem(key) ?? "999999");
+    const isNewBest = moves < prev;
+    if (isNewBest) localStorage.setItem(key, String(moves));
+
+    // Spawn the blank tile so the full image is visible
+    const blankRow = Math.floor(board.blankIdx / gridSize);
+    const blankCol = board.blankIdx % gridSize;
+    const lastTileRow = Math.floor(blankTileValue / gridSize);
+    const lastTileCol = blankTileValue % gridSize;
+    const lastSpriteKey = spriteKeys[lastTileRow][lastTileCol];
+    const { x: bx, y: by } = tileToPixel(blankCol, blankRow, gridSize);
+
+    k.add([
+      k.sprite(lastSpriteKey, { width: tileSize, height: tileSize }),
+      k.pos(bx, by),
+      k.anchor("center"),
+      k.z(5),
+    ]);
+
+    // Remove hint/solve buttons
+    for (const obj of bottomObjs) obj.destroy();
+    bottomObjs.length = 0;
+    if (hintHighlight) {
+      hintHighlight.destroy();
+      hintHighlight = null;
+    }
+
+    // Show completion message
+    const mins = Math.floor(elapsed / 60);
+    const secs = Math.floor(elapsed % 60);
+    const timeStr = `${mins}:${secs.toString().padStart(2, "0")}`;
+    const msg = isNewBest
+      ? `Complete! ${moves} moves, ${timeStr} — New Best!`
+      : `Complete! ${moves} moves, ${timeStr}`;
+
+    k.add([
+      k.text(msg, { size: 16 }),
+      k.pos(WIDTH / 2, bottomY - 8),
+      k.anchor("center"),
+      k.color(isNewBest ? [255, 215, 0] : [100, 255, 100]),
+      k.z(11),
+    ]);
+
+    // New Game button
+    const newGameBtn = k.add([
+      k.rect(140, btnH, { radius: 8 }),
+      k.pos(WIDTH / 2, bottomY + 22),
+      k.anchor("center"),
+      k.color(70, 160, 70),
+      k.area(),
+      k.z(10),
+    ]);
+    k.add([
+      k.text("New Game", { size: 18 }),
+      k.pos(WIDTH / 2, bottomY + 22),
+      k.anchor("center"),
+      k.color(255, 255, 255),
+      k.z(11),
+    ]);
+    newGameBtn.onClick(() => k.go("menu"));
+  }
 
   // ── Board background ──
   k.add([
@@ -522,7 +616,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     k.z(0),
   ]);
 
-  // ── Static frames at every cell (visible on the blank cell) ──
+  // ── Static frames at every cell ──
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       const { x, y } = tileToPixel(c, r, gridSize);
@@ -534,6 +628,22 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
       ]);
     }
   }
+
+  // Blank-cell highlight frame (sits above static wood frames, below movable tiles)
+  const initBlank = tileToPixel(
+    board.blankIdx % gridSize,
+    Math.floor(board.blankIdx / gridSize),
+    gridSize,
+  );
+  const blankFrame = k.add([
+    k.sprite(BLANK_FRAME_SPRITE_KEY, {
+      width: frameSize,
+      height: frameSize,
+    }),
+    k.pos(initBlank.x, initBlank.y),
+    k.anchor("center"),
+    k.z(2),
+  ]);
 
   // ── Spawn movable tiles ──
   function spawnTiles() {
@@ -597,6 +707,15 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
       movesLabel.text = `Moves: ${moves}`;
     }
 
+    // Move blank-cell highlight to the new blank position
+    const newBlank = tileToPixel(
+      clickIdx % gridSize,
+      Math.floor(clickIdx / gridSize),
+      gridSize,
+    );
+    blankFrame.pos.x = newBlank.x;
+    blankFrame.pos.y = newBlank.y;
+
     // Update object tracking
     const objs = [tileObjs, frameObjs, numberObjs];
     for (const arr of objs) {
@@ -634,14 +753,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
     tweenDone.then(() => {
       locked = false;
       if (isSolved(board)) {
-        running = false;
-        const key = BEST_KEY_PREFIX + gridSize;
-        const prev = parseInt(localStorage.getItem(key) ?? "999999");
-        const isNewBest = moves < prev;
-        if (isNewBest) localStorage.setItem(key, String(moves));
-        k.wait(0.3, () =>
-          k.go("win", { moves, time: elapsed, gridSize, isNewBest }),
-        );
+        k.wait(0.3, () => showWinState());
       }
     });
   }
@@ -723,80 +835,6 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
   });
 
   spawnTiles();
-});
-
-// ── Win scene ───────────────────────────────────────────────
-
-interface WinArgs {
-  moves: number;
-  time: number;
-  gridSize: GridSize;
-  isNewBest: boolean;
-}
-
-k.scene("win", ({ moves, time, gridSize, isNewBest }: WinArgs) => {
-  k.add([
-    k.text("Puzzle Complete!", { size: 32 }),
-    k.pos(WIDTH / 2, 120),
-    k.anchor("center"),
-    k.color(100, 255, 100),
-  ]);
-
-  // Show full image
-  k.add([
-    k.sprite(previewSpriteKey(), { width: 200, height: 200 }),
-    k.pos(WIDTH / 2, 270),
-    k.anchor("center"),
-  ]);
-
-  const mins = Math.floor(time / 60);
-  const secs = Math.floor(time % 60);
-  k.add([
-    k.text(`Moves: ${moves}`, { size: 24 }),
-    k.pos(WIDTH / 2, 400),
-    k.anchor("center"),
-    k.color(255, 255, 255),
-  ]);
-
-  k.add([
-    k.text(`Time: ${mins}:${secs.toString().padStart(2, "0")}`, { size: 24 }),
-    k.pos(WIDTH / 2, 435),
-    k.anchor("center"),
-    k.color(255, 255, 255),
-  ]);
-
-  k.add([
-    k.text(`Grid: ${gridSize}x${gridSize}`, { size: 20 }),
-    k.pos(WIDTH / 2, 470),
-    k.anchor("center"),
-    k.color(180, 180, 180),
-  ]);
-
-  if (isNewBest) {
-    k.add([
-      k.text("New Best!", { size: 28 }),
-      k.pos(WIDTH / 2, 510),
-      k.anchor("center"),
-      k.color(255, 215, 0),
-    ]);
-  }
-
-  const playAgainBtn = k.add([
-    k.rect(180, 50, { radius: 8 }),
-    k.pos(WIDTH / 2, 580),
-    k.anchor("center"),
-    k.color(70, 160, 70),
-    k.area(),
-    k.z(10),
-  ]);
-  k.add([
-    k.text("Play Again", { size: 24 }),
-    k.pos(WIDTH / 2, 580),
-    k.anchor("center"),
-    k.color(255, 255, 255),
-    k.z(11),
-  ]);
-  playAgainBtn.onClick(() => k.go("menu"));
 });
 
 // ── Start ───────────────────────────────────────────────────
