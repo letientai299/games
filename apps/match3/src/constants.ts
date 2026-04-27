@@ -21,8 +21,8 @@ export const GEM_NAMES = [
 
 export const NUM_GEMS = GEM_NAMES.length;
 
-// Sprite natural size (PokeAPI official artwork)
-export const SPRITE_SIZE = 475;
+// Sprite natural size (resized from PokeAPI official artwork)
+export const SPRITE_SIZE = 128;
 export const GEM_DISPLAY = CELL_SIZE - 4; // 52px with 2px gap
 export const GEM_SCALE = GEM_DISPLAY / SPRITE_SIZE;
 

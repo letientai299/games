@@ -65,6 +65,7 @@ const k = kaplay({
   touchToMouse: true,
   stretch: true,
   letterbox: true,
+  texFilter: "linear",
   pixelDensity: devicePixelRatio,
   canvas,
 });
