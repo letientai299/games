@@ -8,9 +8,11 @@ import {
   GEM_NAMES,
   NUM_GEMS,
   HIGH_SCORE_KEY,
+  SAVE_KEY,
   gridToPixel,
   decodePos,
   type GridPos,
+  type SaveData,
 } from "./constants";
 import {
   createBoard,
@@ -76,12 +78,37 @@ for (const name of GEM_NAMES) {
 }
 loadSounds(k);
 
+function loadSave(): SaveData | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as SaveData;
+    if (
+      data.board?.length === ROWS &&
+      data.board[0]?.length === COLS &&
+      typeof data.score === "number"
+    )
+      return data;
+  } catch {
+    /* corrupted save */
+  }
+  return null;
+}
+
+function writeSave(data: SaveData) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+
+function clearSave() {
+  localStorage.removeItem(SAVE_KEY);
+}
+
 // ── Title scene ─────────────────────────────────────────────
 
 k.scene("title", () => {
   k.add([
     k.text("Pokemon Match", { size: 40 }),
-    k.pos(k.center().x, 240),
+    k.pos(k.center().x, 220),
     k.anchor("center"),
     k.color(255, 255, 255),
   ]);
@@ -90,38 +117,78 @@ k.scene("title", () => {
   if (best > 0) {
     k.add([
       k.text(`Best: ${best}`, { size: 22 }),
-      k.pos(k.center().x, 300),
+      k.pos(k.center().x, 280),
       k.anchor("center"),
       k.color(180, 180, 180),
     ]);
   }
 
-  k.add([
-    k.text("Tap to Play", { size: 26 }),
-    k.pos(k.center().x, 420),
-    k.anchor("center"),
-    k.color(200, 200, 200),
-  ]);
+  const save = loadSave();
 
-  // The tap that starts the game also unlocks audio (iOS requirement)
-  canvas.addEventListener(
-    "pointerdown",
-    () => {
-      if (k.audioCtx.state === "suspended") k.audioCtx.resume();
-      k.go("game");
-    },
-    { once: true },
-  );
+  function unlockAndGo(scene: string, args?: Record<string, unknown>) {
+    if (k.audioCtx.state === "suspended") k.audioCtx.resume();
+    k.go(scene, args);
+  }
+
+  if (save) {
+    // Continue saved game
+    const contBtn = k.add([
+      k.rect(220, 55, { radius: 12 }),
+      k.pos(k.center().x, 390),
+      k.anchor("center"),
+      k.color(70, 130, 70),
+      k.area(),
+    ]);
+    k.add([
+      k.text(`Continue (${save.score} pts)`, { size: 22 }),
+      k.pos(k.center().x, 390),
+      k.anchor("center"),
+      k.color(255, 255, 255),
+    ]);
+    contBtn.onClick(() => unlockAndGo("game", { save }));
+
+    // New game
+    const newBtn = k.add([
+      k.rect(220, 50, { radius: 12 }),
+      k.pos(k.center().x, 465),
+      k.anchor("center"),
+      k.color(80, 80, 120),
+      k.area(),
+    ]);
+    k.add([
+      k.text("New Game", { size: 22 }),
+      k.pos(k.center().x, 465),
+      k.anchor("center"),
+      k.color(200, 200, 200),
+    ]);
+    newBtn.onClick(() => {
+      clearSave();
+      unlockAndGo("game");
+    });
+  } else {
+    k.add([
+      k.text("Tap to Play", { size: 26 }),
+      k.pos(k.center().x, 420),
+      k.anchor("center"),
+      k.color(200, 200, 200),
+    ]);
+
+    canvas.addEventListener("pointerdown", () => unlockAndGo("game"), {
+      once: true,
+    });
+  }
 });
 
 // ── Game scene ──────────────────────────────────────────────
 
-k.scene("game", () => {
+k.scene("game", (args?: { save?: SaveData }) => {
+  const save = args?.save ?? null;
+
   let board: Board;
   let gems: (GemObj | null)[][];
   let selected: GridPos | null = null;
   let locked = false;
-  let score = 0;
+  let score = save?.score ?? 0;
 
   // Streak bonus: consecutive successful swaps without invalid moves or long pauses
   const STREAK_TIMEOUT = 5; // seconds before streak resets
@@ -131,19 +198,27 @@ k.scene("game", () => {
   // Hints: start with 3, earn 1 per 1000 points
   const HINT_START = 3;
   const HINT_INTERVAL = 1000;
-  let hintsUsed = 0;
+  let hintsUsed = save?.hintsUsed ?? 0;
   let hintHighlights: ReturnType<typeof k.add>[] = [];
 
-  // Generate a board that isn't deadlocked
+  // Generate a board that isn't deadlocked, or restore from save
   function initBoard() {
-    do {
-      board = createBoard((choices) => k.choose(choices));
-    } while (isDeadlocked(board));
+    if (save) {
+      board = save.board;
+    } else {
+      do {
+        board = createBoard((choices) => k.choose(choices));
+      } while (isDeadlocked(board));
+    }
+  }
+
+  function saveGame() {
+    writeSave({ board, score, hintsUsed });
   }
 
   // UI
   const scoreLabel = k.add([
-    k.text("Score: 0", { size: 28 }),
+    k.text(`Score: ${score}`, { size: 28 }),
     k.pos(BOARD_PADDING, 20),
     k.color(255, 255, 255),
     k.z(10),
@@ -452,11 +527,13 @@ k.scene("game", () => {
 
     if (isDeadlocked(board)) {
       saveHighScore();
+      clearSave();
       playGameOverSound(k);
       k.go("gameover", { score });
       return;
     }
 
+    saveGame();
     locked = false;
   }
 

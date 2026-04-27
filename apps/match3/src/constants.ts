@@ -40,6 +40,13 @@ export const DESTROY_DURATION = 0.15;
 
 // Persistence
 export const HIGH_SCORE_KEY = "match3_high_score";
+export const SAVE_KEY = "match3_save";
+
+export interface SaveData {
+  board: number[][];
+  score: number;
+  hintsUsed: number;
+}
 
 // Types
 export interface GridPos {
