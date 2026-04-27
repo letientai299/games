@@ -413,7 +413,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
 
   const numToggle = k.add([
     k.rect(40, 30, { radius: 8 }),
-    k.pos(WIDTH - BOARD_PADDING - 50, CONTROLS_Y),
+    k.pos(BOARD_PADDING + 40 + 80 / 2 + 8 + 40 / 2, CONTROLS_Y),
     k.anchor("center"),
     k.color(60, 60, 100),
     k.area(),
@@ -421,7 +421,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
   ]);
   k.add([
     k.text("#", { size: 18 }),
-    k.pos(WIDTH - BOARD_PADDING - 50, CONTROLS_Y),
+    k.pos(BOARD_PADDING + 40 + 80 / 2 + 8 + 40 / 2, CONTROLS_Y),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(11),

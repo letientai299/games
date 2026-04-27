@@ -3,15 +3,13 @@ export const WIDTH = 480;
 export const HEIGHT = 720;
 
 // Grid sizes
-export type GridSize = 3 | 4 | 5 | 6;
-export const GRID_SIZES: GridSize[] = [3, 4, 5, 6];
+export type GridSize = 2 | 3;
+export const GRID_SIZES: GridSize[] = [2, 3];
 
 // Shuffle swap counts per grid size (random-walk from solved)
 export const SHUFFLE_SWAPS: Record<GridSize, number> = {
+  2: 20,
   3: 100,
-  4: 200,
-  5: 400,
-  6: 600,
 };
 
 // Layout

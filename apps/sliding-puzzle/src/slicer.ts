@@ -157,13 +157,24 @@ export function sliceAndRegister(
     }
   }
 
-  // Register a small preview sprite (full image, square-cropped)
+  // Register a small preview sprite with the blank cell (bottom-right) darkened
   const previewCanvas = document.createElement("canvas");
   const previewSize = 128;
   previewCanvas.width = previewSize;
   previewCanvas.height = previewSize;
   const pctx = previewCanvas.getContext("2d")!;
   pctx.drawImage(img, sx, sy, side, side, 0, 0, previewSize, previewSize);
+
+  // Darken the blank cell area
+  const cellPx = previewSize / gridSize;
+  const blankX = (gridSize - 1) * cellPx;
+  const blankY = (gridSize - 1) * cellPx;
+  pctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  pctx.fillRect(blankX, blankY, cellPx, cellPx);
+  pctx.strokeStyle = "rgba(100, 150, 255, 0.8)";
+  pctx.lineWidth = 2;
+  pctx.strokeRect(blankX + 1, blankY + 1, cellPx - 2, cellPx - 2);
+
   k.loadSprite(previewSpriteKey(), previewCanvas.toDataURL());
 
   return keys;
