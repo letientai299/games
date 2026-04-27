@@ -1,0 +1,5 @@
+dist
+node_modules
+.ai.dump
+pnpm-lock.yaml
+home/index.html

@@ -1,0 +1,23 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node --experimental-strip-types home/generate.ts",
+    "dev": "vite",
+    "build": "pnpm -r build",
+    "build:home": "pnpm --filter home build",
+    "lint": "eslint --fix .",
+    "fmt": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.2.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "5.5.5",
+    "kaplay": "3001.0.19",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.59.0",
+    "vite": "8.0.10"
+  }
+}

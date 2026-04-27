@@ -1,0 +1,13 @@
+{
+  "name": "match3",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "displayName": "Match 3",
+  "description": "Swap gems to match three or more in a row",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  }
+}

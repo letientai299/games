@@ -1,0 +1,12 @@
+{
+  "name": "home",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "generate": "node --experimental-strip-types generate.ts",
+    "build": "node --experimental-strip-types generate.ts /games/ && vite build",
+    "preview": "vite preview"
+  }
+}

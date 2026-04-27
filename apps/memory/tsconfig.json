@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["kaplay/global"]
+  },
+  "include": ["src"]
+}
