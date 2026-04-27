@@ -397,8 +397,14 @@ k.scene("game", () => {
         fallPromises.push(animateFall(k, gem, mv.toRow, mv.toRow - mv.fromRow));
       }
 
-      // Fill empty cells with new gems
-      const newGems = fillEmpty(board, () => k.randi(0, NUM_GEMS));
+      // Fill empty cells — difficulty ramps from 0 to 0.8 as score increases
+      const difficulty = Math.min(score / 5000, 0.8);
+      const newGems = fillEmpty(
+        board,
+        () => k.randi(0, NUM_GEMS),
+        (choices) => k.choose(choices),
+        difficulty,
+      );
       for (const ng of newGems) {
         // Start above visible board
         const gem = createGem(k, ng.col, -(ng.row + 1), ng.type);

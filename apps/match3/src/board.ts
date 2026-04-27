@@ -140,14 +140,42 @@ export interface NewGem {
   type: number;
 }
 
-export function fillEmpty(board: Board, randFn: () => number): NewGem[] {
+/**
+ * Fill empty cells with new gems.
+ * `difficulty` (0–1) controls how aggressively new gems avoid creating
+ * easy-to-match configurations. At 0 it's purely random. At 1 it always
+ * avoids placing gems next to same-type neighbors, making valid moves
+ * scarcer and pushing the board toward deadlock.
+ */
+export function fillEmpty(
+  board: Board,
+  randFn: () => number,
+  chooseFn: (choices: number[]) => number,
+  difficulty: number,
+): NewGem[] {
+  const allTypes = Array.from({ length: NUM_GEMS }, (_, i) => i);
   const added: NewGem[] = [];
+
   for (let c = 0; c < COLS; c++) {
     for (let r = 0; r < ROWS; r++) {
-      if (board[r][c] < 0) {
+      if (board[r][c] >= 0) continue;
+
+      if (difficulty > 0 && Math.random() < difficulty) {
+        // Avoid types that appear in adjacent cells (makes pairs harder to form)
+        const neighbors = new Set<number>();
+        if (c > 0 && board[r][c - 1] >= 0) neighbors.add(board[r][c - 1]);
+        if (c < COLS - 1 && board[r][c + 1] >= 0)
+          neighbors.add(board[r][c + 1]);
+        if (r > 0 && board[r - 1][c] >= 0) neighbors.add(board[r - 1][c]);
+        if (r < ROWS - 1 && board[r + 1][c] >= 0)
+          neighbors.add(board[r + 1][c]);
+        const safe = allTypes.filter((t) => !neighbors.has(t));
+        board[r][c] = safe.length > 0 ? chooseFn(safe) : randFn();
+      } else {
         board[r][c] = randFn();
-        added.push({ col: c, row: r, type: board[r][c] });
       }
+
+      added.push({ col: c, row: r, type: board[r][c] });
     }
   }
   return added;
