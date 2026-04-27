@@ -158,27 +158,71 @@ k.scene("game", () => {
     }
   }
 
-  // Input
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  k.onClick("gem", (clicked: any) => {
-    const gem = clicked as GemObj;
+  // Input — supports both tap-to-swap and drag-to-swap
+  const DRAG_THRESHOLD = CELL_SIZE * 0.3;
+  let dragStart: { pos: GridPos; mouse: { x: number; y: number } } | null =
+    null;
+
+  function pixelToGrid(x: number, y: number): GridPos | null {
+    const col = Math.floor((x - BOARD_PADDING) / CELL_SIZE);
+    const row = Math.floor((y - BOARD_TOP) / CELL_SIZE);
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
+    return { row, col };
+  }
+
+  k.onMousePress(() => {
     if (locked) return;
-    const pos: GridPos = { row: gem.gridRow, col: gem.gridCol };
+    const mp = k.mousePos();
+    const gp = pixelToGrid(mp.x, mp.y);
+    if (gp) dragStart = { pos: gp, mouse: { x: mp.x, y: mp.y } };
+  });
 
-    if (!selected) {
-      selected = pos;
-      showHighlight(pos);
-      return;
-    }
+  k.onMouseRelease(() => {
+    if (locked || !dragStart) return;
+    const mp = k.mousePos();
+    const dx = mp.x - dragStart.mouse.x;
+    const dy = mp.y - dragStart.mouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const origin = dragStart.pos;
+    dragStart = null;
 
-    const dr = Math.abs(pos.row - selected.row);
-    const dc = Math.abs(pos.col - selected.col);
-
-    if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-      handleSwap(selected, pos);
+    if (dist >= DRAG_THRESHOLD) {
+      // Drag — determine direction
+      let target: GridPos;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        target = { row: origin.row, col: origin.col + (dx > 0 ? 1 : -1) };
+      } else {
+        target = { row: origin.row + (dy > 0 ? 1 : -1), col: origin.col };
+      }
+      if (
+        target.col >= 0 &&
+        target.col < COLS &&
+        target.row >= 0 &&
+        target.row < ROWS
+      ) {
+        clearHighlight();
+        handleSwap(origin, target);
+      }
     } else {
-      selected = pos;
-      showHighlight(pos);
+      // Tap — select or swap with previously selected
+      const pos = pixelToGrid(mp.x, mp.y);
+      if (!pos) return;
+
+      if (!selected) {
+        selected = pos;
+        showHighlight(pos);
+        return;
+      }
+
+      const dr = Math.abs(pos.row - selected.row);
+      const dc = Math.abs(pos.col - selected.col);
+
+      if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+        handleSwap(selected, pos);
+      } else {
+        selected = pos;
+        showHighlight(pos);
+      }
     }
   });
 
