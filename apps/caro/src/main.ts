@@ -35,6 +35,8 @@ const UI_HEIGHT = 44;
 const GAME_HEIGHT = HEIGHT - UI_HEIGHT;
 
 k.scene("menu", () => {
+  document.getElementById("loading")?.remove();
+
   k.add([
     k.text("Caro", { size: 56 }),
     k.pos(WIDTH / 2, 150),
@@ -85,6 +87,7 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
   let camX = 0;
   let camY = 0;
   let locked = false;
+  let uiClicked = false;
   let winCellsCache: Set<string> | null = null;
 
   let isPanning = false;
@@ -163,6 +166,7 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
     const action = menuOptions[i].action;
     bg.onClick(() => {
       if (!menuOpen) return;
+      uiClicked = true;
       closeMenu();
       action();
     });
@@ -180,6 +184,7 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
   }
 
   menuBtn.onClick(() => {
+    uiClicked = true;
     if (menuOpen) closeMenu();
     else openMenu();
   });
@@ -247,13 +252,19 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
   });
 
   k.onMouseRelease("left", () => {
-    const wasMenuOpen = menuOpen;
     if (menuOpen && panStart && panStart.y >= UI_HEIGHT) {
       closeMenu();
     }
-    if (!wasMenuOpen && !didPan && !locked && panStart && panStart.y >= UI_HEIGHT) {
+    if (
+      !uiClicked &&
+      !didPan &&
+      !locked &&
+      panStart &&
+      panStart.y >= UI_HEIGHT
+    ) {
       handleClick(k.mousePos());
     }
+    uiClicked = false;
     isPanning = false;
     panStart = null;
     camStart = null;

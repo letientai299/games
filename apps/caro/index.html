@@ -10,9 +10,53 @@
         overflow: hidden;
         background: #1a1a2e;
       }
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        font-family: sans-serif;
+        color: #ccc;
+      }
+      #loading span {
+        margin-bottom: 16px;
+        font-size: 18px;
+      }
+      #progress-track {
+        width: 200px;
+        height: 6px;
+        background: #2a2a4a;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      #progress-bar {
+        height: 100%;
+        width: 0%;
+        background: #6488e6;
+        border-radius: 3px;
+        animation: load 1.2s ease-out forwards;
+      }
+      @keyframes load {
+        0% {
+          width: 0%;
+        }
+        60% {
+          width: 70%;
+        }
+        100% {
+          width: 95%;
+        }
+      }
     </style>
   </head>
   <body>
+    <div id="loading">
+      <span>Loading...</span>
+      <div id="progress-track"><div id="progress-bar"></div></div>
+    </div>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>
