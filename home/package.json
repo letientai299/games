@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "generate": "node --experimental-strip-types generate.ts"
+    "generate": "node --experimental-strip-types generate.ts",
+    "build": "node --experimental-strip-types generate.ts /games/ && mkdir -p dist && cp index.html dist/"
   }
 }

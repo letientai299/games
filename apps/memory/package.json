@@ -5,5 +5,7 @@
   "type": "module",
   "displayName": "Memory Pairs",
   "description": "Find matching pairs by flipping cards",
-  "scripts": {}
+  "scripts": {
+    "build": "GAME=$npm_package_name vite build -c ../../vite.game.config.ts"
+  }
 }

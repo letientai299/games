@@ -5,5 +5,7 @@
   "type": "module",
   "displayName": "Match 3",
   "description": "Swap gems to match three or more in a row",
-  "scripts": {}
+  "scripts": {
+    "build": "GAME=$npm_package_name vite build -c ../../vite.game.config.ts"
+  }
 }
