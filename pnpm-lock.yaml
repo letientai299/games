@@ -44,15 +44,30 @@ importers:
 
   apps/caro:
     dependencies:
+      '@games/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@trystero-p2p/nostr':
         specifier: 0.23.1
         version: 0.23.1
 
-  apps/light-up: {}
+  apps/light-up:
+    dependencies:
+      '@games/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
-  apps/match3: {}
+  apps/match3:
+    dependencies:
+      '@games/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
-  apps/sliding-puzzle: {}
+  apps/sliding-puzzle:
+    dependencies:
+      '@games/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
   home: {}
 

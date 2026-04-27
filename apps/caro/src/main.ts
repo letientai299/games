@@ -1,5 +1,5 @@
-import kaplay from "kaplay";
 import type { Vec2 } from "kaplay";
+import { initGame } from "@games/shared";
 import {
   CELL_SIZE,
   WIDTH,
@@ -32,19 +32,7 @@ import type { Player } from "./constants";
 
 const ICON_FONT = "material-symbols";
 
-const canvas = document.createElement("canvas");
-document.body.appendChild(canvas);
-
-const k = kaplay({
-  width: WIDTH,
-  height: HEIGHT,
-  background: COLOR_BG,
-  touchToMouse: true,
-  stretch: true,
-  letterbox: true,
-  pixelDensity: window.devicePixelRatio,
-  canvas,
-});
+const k = initGame({ width: WIDTH, height: HEIGHT, background: COLOR_BG });
 
 k.loadFont(ICON_FONT, materialSymbolsUrl);
 loadSounds(k);

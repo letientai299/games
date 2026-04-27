@@ -1,7 +1,7 @@
-import kaplay, { type Vec2 } from "kaplay";
+import { type Vec2 } from "kaplay";
+import { initGame } from "@games/shared";
 import {
   WIDTH,
-  HEIGHT,
   BOARD_PADDING,
   BOARD_SIZE,
   BOARD_TOP,
@@ -48,20 +48,7 @@ const IMAGE_URLS: Record<PokemonName, string> = {
   mewtwo: mewtwoUrl,
 };
 
-const canvas = document.createElement("canvas");
-document.body.appendChild(canvas);
-
-const k = kaplay({
-  width: WIDTH,
-  height: HEIGHT,
-  background: [26, 26, 46],
-  touchToMouse: true,
-  stretch: true,
-  letterbox: true,
-  texFilter: "linear",
-  pixelDensity: devicePixelRatio,
-  canvas,
-});
+const k = initGame();
 
 loadSounds(k);
 

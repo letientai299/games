@@ -1,1 +1,1 @@
-export {};
+export { initGame } from "./init-game";

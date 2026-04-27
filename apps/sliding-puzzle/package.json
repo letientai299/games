@@ -7,5 +7,8 @@
   "description": "Unscramble the picture by sliding tiles",
   "scripts": {
     "build": "GAME=$npm_package_name vite build -c ../../vite.game.config.ts"
+  },
+  "dependencies": {
+    "@games/shared": "workspace:*"
   }
 }

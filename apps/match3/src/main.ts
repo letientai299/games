@@ -1,4 +1,4 @@
-import kaplay from "kaplay";
+import { initGame } from "@games/shared";
 import {
   COLS,
   ROWS,
@@ -58,20 +58,7 @@ const SPRITE_URLS: Record<string, string> = {
   dewgong: dewgongUrl,
 };
 
-const canvas = document.createElement("canvas");
-document.body.appendChild(canvas);
-
-const k = kaplay({
-  width: 480,
-  height: 720,
-  background: [26, 26, 46],
-  touchToMouse: true,
-  stretch: true,
-  letterbox: true,
-  texFilter: "linear",
-  pixelDensity: devicePixelRatio,
-  canvas,
-});
+const k = initGame();
 
 for (const name of GEM_NAMES) {
   k.loadSprite(name, SPRITE_URLS[name]);

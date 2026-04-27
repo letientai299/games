@@ -9,6 +9,7 @@
     "build": "GAME=$npm_package_name vite build -c ../../vite.game.config.ts"
   },
   "dependencies": {
+    "@games/shared": "workspace:*",
     "@trystero-p2p/nostr": "0.23.1"
   }
 }

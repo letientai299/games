@@ -1,4 +1,4 @@
-import kaplay from "kaplay";
+import { initGame } from "@games/shared";
 import materialSymbolsUrl from "./assets/fonts/material-symbols.ttf";
 import {
   WIDTH,
@@ -38,19 +38,7 @@ import {
   playWrong,
 } from "./sound";
 
-const canvas = document.createElement("canvas");
-document.body.appendChild(canvas);
-
-const k = kaplay({
-  width: WIDTH,
-  height: HEIGHT,
-  background: COLOR_BG,
-  touchToMouse: true,
-  stretch: true,
-  letterbox: true,
-  pixelDensity: window.devicePixelRatio,
-  canvas,
-});
+const k = initGame({ background: COLOR_BG });
 
 k.loadFont(ICON_FONT, materialSymbolsUrl);
 loadSounds(k);
