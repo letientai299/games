@@ -11,7 +11,15 @@ const base = process.argv[2] ?? "/";
 const appsDir = join(import.meta.dirname, "..", "apps");
 
 const games: GameMeta[] = readdirSync(appsDir, { withFileTypes: true })
-  .filter((d) => d.isDirectory())
+  .filter((d) => {
+    if (!d.isDirectory()) return false;
+    try {
+      readFileSync(join(appsDir, d.name, "package.json"));
+      return true;
+    } catch {
+      return false;
+    }
+  })
   .map((d) => {
     const pkg = JSON.parse(
       readFileSync(join(appsDir, d.name, "package.json"), "utf-8"),
