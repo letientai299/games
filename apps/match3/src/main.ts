@@ -29,6 +29,12 @@ import {
   animateFall,
   type GemObj,
 } from "./gem";
+import {
+  loadSounds,
+  playMatchSound,
+  playGameOverSound,
+  playInvalidSound,
+} from "./sound";
 
 // Load sprites as Vite assets for correct URL resolution
 import pikachuUrl from "./assets/pikachu.png";
@@ -66,6 +72,16 @@ const k = kaplay({
 for (const name of GEM_NAMES) {
   k.loadSprite(name, SPRITE_URLS[name]);
 }
+loadSounds(k);
+
+// iOS requires AudioContext resume on first user gesture
+document.addEventListener(
+  "touchstart",
+  () => {
+    if (k.audioCtx.state === "suspended") k.audioCtx.resume();
+  },
+  { once: true },
+);
 
 // ── Game scene ──────────────────────────────────────────────
 
@@ -75,6 +91,11 @@ k.scene("game", () => {
   let selected: GridPos | null = null;
   let locked = false;
   let score = 0;
+
+  // Streak bonus: consecutive successful swaps without invalid moves or long pauses
+  const STREAK_TIMEOUT = 5; // seconds before streak resets
+  let streak = 0;
+  let lastMoveTime = 0;
 
   // Generate a board that isn't deadlocked
   function initBoard() {
@@ -137,6 +158,51 @@ k.scene("game", () => {
       k.opacity(0.35),
       k.z(2),
     ]);
+  }
+
+  /** Floating score popup that drifts up and fades out. */
+  function showScorePopup(
+    points: number,
+    positions: Set<number>,
+    bonus: string,
+  ) {
+    let cx = 0;
+    let cy = 0;
+    for (const enc of positions) {
+      const { row, col } = decodePos(enc);
+      const p = gridToPixel(col, row);
+      cx += p.x;
+      cy += p.y;
+    }
+    cx /= positions.size;
+    cy /= positions.size;
+
+    const label = bonus ? `+${points} ${bonus}` : `+${points}`;
+    const popup = k.add([
+      k.text(label, { size: 22 }),
+      k.pos(cx, cy),
+      k.anchor("center"),
+      k.color(255, 255, 100),
+      k.opacity(1),
+      k.timer(),
+      k.z(20),
+    ]);
+    popup.tween(
+      popup.pos.clone(),
+      k.vec2(cx, cy - 60),
+      0.8,
+      (p: import("kaplay").Vec2) => (popup.pos = p),
+      k.easings.easeOutQuad,
+    );
+    popup
+      .tween(
+        1,
+        0,
+        0.8,
+        (v: number) => (popup.opacity = v),
+        k.easings.easeInQuad,
+      )
+      .then(() => popup.destroy());
   }
 
   function clearHighlight() {
@@ -248,6 +314,7 @@ k.scene("game", () => {
     const matches = findMatches(board);
     if (matches.size === 0) {
       // Invalid — swap back
+      playInvalidSound(k);
       await animateSwap(k, gemA, gemB);
       swapCells(board, a, b);
       gems[a.row][a.col] = gemA;
@@ -256,14 +323,22 @@ k.scene("game", () => {
       gemA.gridCol = a.col;
       gemB.gridRow = b.row;
       gemB.gridCol = b.col;
+      streak = 0;
       locked = false;
       return;
     }
+
+    // Update streak — reset if too much time passed
+    const now = k.time();
+    if (now - lastMoveTime > STREAK_TIMEOUT) streak = 0;
+    streak++;
+    lastMoveTime = now;
 
     await processCascades(matches);
 
     if (isDeadlocked(board)) {
       saveHighScore();
+      playGameOverSound(k);
       k.go("gameover", { score });
       return;
     }
@@ -273,12 +348,28 @@ k.scene("game", () => {
 
   async function processCascades(initial: Set<number>) {
     let matches = initial;
-    let multiplier = 1;
+    let cascadeStep = 0;
 
     while (matches.size > 0) {
-      score += scoreMatches(matches) * multiplier;
+      // Streak multiplier: x1 for first move, x1.5 for 2nd, x2 for 3rd, etc.
+      const streakMult = 1 + (streak - 1) * 0.5;
+      // Cascade multiplier: x1 for first clear, x2 for chain, x3, etc.
+      const cascadeMult = cascadeStep + 1;
+      const { points: rawPoints, maxLen } = scoreMatches(matches);
+      const totalPoints = Math.round(rawPoints * cascadeMult * streakMult);
+
+      score += totalPoints;
       scoreLabel.text = `Score: ${score}`;
-      multiplier++;
+
+      // Build bonus label
+      const bonusParts: string[] = [];
+      if (cascadeMult > 1) bonusParts.push(`x${cascadeMult} chain`);
+      if (streakMult > 1) bonusParts.push(`x${streakMult} streak`);
+      showScorePopup(totalPoints, matches, bonusParts.join(" "));
+
+      // Sound: different for match length + rising pitch on cascades
+      playMatchSound(k, maxLen, cascadeStep);
+      cascadeStep++;
 
       // Destroy matched gems
       const destroyPromises: Promise<void>[] = [];

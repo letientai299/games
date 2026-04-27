@@ -64,8 +64,14 @@ export function findMatches(board: Board): Set<number> {
   return matched;
 }
 
-export function scoreMatches(matched: Set<number>): number {
+export interface MatchResult {
+  points: number;
+  maxLen: number;
+}
+
+export function scoreMatches(matched: Set<number>): MatchResult {
   let total = 0;
+  let maxLen = 0;
 
   // Horizontal runs
   for (let r = 0; r < ROWS; r++) {
@@ -74,7 +80,10 @@ export function scoreMatches(matched: Set<number>): number {
       if (c < COLS && matched.has(encodePos(r, c))) {
         runLen++;
       } else {
-        if (runLen >= 3) total += MATCH_SCORES[Math.min(runLen, 5)] ?? 100;
+        if (runLen >= 3) {
+          total += MATCH_SCORES[Math.min(runLen, 5)] ?? 100;
+          if (runLen > maxLen) maxLen = runLen;
+        }
         runLen = 0;
       }
     }
@@ -87,13 +96,16 @@ export function scoreMatches(matched: Set<number>): number {
       if (r < ROWS && matched.has(encodePos(r, c))) {
         runLen++;
       } else {
-        if (runLen >= 3) total += MATCH_SCORES[Math.min(runLen, 5)] ?? 100;
+        if (runLen >= 3) {
+          total += MATCH_SCORES[Math.min(runLen, 5)] ?? 100;
+          if (runLen > maxLen) maxLen = runLen;
+        }
         runLen = 0;
       }
     }
   }
 
-  return total;
+  return { points: total, maxLen };
 }
 
 export interface FallMove {
