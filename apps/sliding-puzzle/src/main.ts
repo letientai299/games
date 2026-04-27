@@ -2,6 +2,7 @@ import { type Vec2 } from "kaplay";
 import { initGame } from "@games/shared";
 import {
   WIDTH,
+  HEIGHT,
   BOARD_PADDING,
   BOARD_SIZE,
   BOARD_TOP,
@@ -51,12 +52,21 @@ const k = initGame();
 
 loadSounds(k);
 
-// Shared state between scenes
-let selectedImage: PokemonName | "custom" = "bulbasaur";
-let customImageSrc: string | null = null;
-
 // File input for image upload
 const fileInput = document.getElementById("imageUpload") as HTMLInputElement;
+
+/** Load an image and either start the game directly or show the crop scene. */
+async function startWithImage(src: string) {
+  unlockAudio();
+  const img = await loadImage(src);
+  const isSquare = Math.abs(img.width - img.height) <= 1;
+  if (isSquare) {
+    const spriteKeys = sliceAndRegister(k, img);
+    k.go("game", { spriteKeys });
+  } else {
+    k.go("crop", { img });
+  }
+}
 
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve) => {
@@ -64,6 +74,68 @@ function readFileAsDataURL(file: File): Promise<string> {
     reader.onload = () => resolve(reader.result as string);
     reader.readAsDataURL(file);
   });
+}
+
+/** Map a game-coordinate rect to a screen-coordinate rect on the stretched canvas. */
+function gameToScreenRect(
+  gx: number,
+  gy: number,
+  gw: number,
+  gh: number,
+): { left: number; top: number; width: number; height: number } {
+  const canvas = k.canvas;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = rect.width / WIDTH;
+  const scaleY = rect.height / HEIGHT;
+  // letterbox uses the smaller scale, centering along the other axis
+  const scale = Math.min(scaleX, scaleY);
+  const offsetX = rect.left + (rect.width - WIDTH * scale) / 2;
+  const offsetY = rect.top + (rect.height - HEIGHT * scale) / 2;
+  return {
+    left: offsetX + gx * scale,
+    top: offsetY + gy * scale,
+    width: gw * scale,
+    height: gh * scale,
+  };
+}
+
+/**
+ * Create a transparent HTML overlay positioned over a game-coordinate rect.
+ * Returns the element (for cleanup) and a resize handler to keep it in sync.
+ */
+function createFilePickerOverlay(
+  gx: number,
+  gy: number,
+  gw: number,
+  gh: number,
+): { el: HTMLLabelElement; cleanup: () => void } {
+  const label = document.createElement("label");
+  label.htmlFor = "imageUpload";
+  label.style.position = "fixed";
+  label.style.cursor = "pointer";
+  label.style.zIndex = "100";
+  // transparent but tappable
+  label.style.background = "transparent";
+
+  function reposition() {
+    const r = gameToScreenRect(gx, gy, gw, gh);
+    label.style.left = `${r.left}px`;
+    label.style.top = `${r.top}px`;
+    label.style.width = `${r.width}px`;
+    label.style.height = `${r.height}px`;
+  }
+
+  reposition();
+  window.addEventListener("resize", reposition);
+  document.body.appendChild(label);
+
+  return {
+    el: label,
+    cleanup() {
+      window.removeEventListener("resize", reposition);
+      label.remove();
+    },
+  };
 }
 
 // ── Menu scene ──────────────────────────────────────────────
@@ -84,12 +156,12 @@ k.scene("menu", () => {
     k.z(11),
   ]);
   homeBtn.onClick(() => {
-    window.location.href = "/";
+    window.location.href = "../";
   });
 
   // Title
   k.add([
-    k.text("Image Scramble", { size: 36 }),
+    k.text("Sliding Puzzle", { size: 36 }),
     k.pos(WIDTH / 2, 40),
     k.anchor("center"),
     k.color(255, 255, 255),
@@ -108,20 +180,6 @@ k.scene("menu", () => {
   const gap = 12;
   const startX = WIDTH / 2 - (3 * (thumbSize + gap) - gap) / 2 + thumbSize / 2;
   const startY = 120;
-
-  // Selection highlight
-  let selHighlight: ReturnType<typeof k.add> | null = null;
-
-  function showSelection(x: number, y: number) {
-    if (selHighlight) selHighlight.destroy();
-    selHighlight = k.add([
-      k.rect(thumbSize + 6, thumbSize + 6, { radius: 8 }),
-      k.pos(x, y),
-      k.anchor("center"),
-      k.color(255, 215, 0),
-      k.z(1),
-    ]);
-  }
 
   POKEMON_IMAGES.forEach((name, i) => {
     const col = i % 3;
@@ -149,24 +207,17 @@ k.scene("menu", () => {
       k.z(3),
     ]);
 
-    if (name === selectedImage) showSelection(x, y);
-
-    btn.onClick(() => {
-      selectedImage = name;
-      customImageSrc = null;
-      showSelection(x, y);
-    });
+    btn.onClick(() => startWithImage(IMAGE_URLS[name]));
   });
 
-  // Upload button
+  // Upload button — uses an HTML overlay so mobile browsers honor the file picker
   const uploadX = startX;
   const uploadY = startY + 2 * (thumbSize + gap);
-  const uploadBtn = k.add([
+  k.add([
     k.rect(thumbSize, thumbSize, { radius: 6 }),
     k.pos(uploadX, uploadY),
     k.anchor("center"),
     k.color(60, 60, 90),
-    k.area(),
     k.z(2),
   ]);
   k.add([
@@ -177,70 +228,314 @@ k.scene("menu", () => {
     k.z(3),
   ]);
 
-  // Custom image indicator
-  let customLabel: ReturnType<typeof k.add> | null = null;
+  // Transparent label overlay positioned over the canvas button
+  const overlay = createFilePickerOverlay(
+    uploadX - thumbSize / 2,
+    uploadY - thumbSize / 2,
+    thumbSize,
+    thumbSize,
+  );
 
-  if (selectedImage === "custom" && customImageSrc) {
-    showSelection(uploadX, uploadY);
-    customLabel = k.add([
-      k.text("Custom", { size: 12 }),
-      k.pos(uploadX + thumbSize / 2 + 8, uploadY),
-      k.anchor("left"),
-      k.color(180, 180, 180),
-      k.z(3),
-    ]);
-  }
-
-  uploadBtn.onClick(() => {
-    fileInput.click();
-  });
-
-  // Handle file selection
+  // Handle file selection — start game immediately
   const handleFile = async () => {
     const file = fileInput.files?.[0];
     if (!file) return;
-    customImageSrc = await readFileAsDataURL(file);
-    selectedImage = "custom";
-    showSelection(uploadX, uploadY);
-    if (customLabel) customLabel.destroy();
-    customLabel = k.add([
-      k.text("Custom", { size: 12 }),
-      k.pos(uploadX + thumbSize / 2 + 8, uploadY),
-      k.anchor("left"),
-      k.color(180, 180, 180),
-      k.z(3),
-    ]);
+    const src = await readFileAsDataURL(file);
     fileInput.value = "";
+    startWithImage(src);
   };
   fileInput.addEventListener("change", handleFile);
-  k.onSceneLeave(() => fileInput.removeEventListener("change", handleFile));
+  k.onSceneLeave(() => {
+    fileInput.removeEventListener("change", handleFile);
+    overlay.cleanup();
+  });
+});
 
-  // Play button
-  const playY = uploadY + thumbSize / 2 + 50;
-  const playBtn = k.add([
-    k.rect(160, 50, { radius: 8 }),
-    k.pos(WIDTH / 2, playY),
+// ── Crop scene ─────────────────────────────────────────────
+
+interface CropArgs {
+  img: HTMLImageElement;
+}
+
+k.scene("crop", ({ img }: CropArgs) => {
+  const imgW = img.width;
+  const imgH = img.height;
+  const maxSide = Math.min(imgW, imgH);
+  const minSide = Math.min(GRID_SIZE * 32, maxSide);
+
+  let cropSide = maxSide;
+  let cropX = Math.round((imgW - cropSide) / 2);
+  let cropY = Math.round((imgH - cropSide) / 2);
+
+  function clampCrop() {
+    cropSide = Math.round(Math.max(minSide, Math.min(maxSide, cropSide)));
+    cropX = Math.round(Math.max(0, Math.min(imgW - cropSide, cropX)));
+    cropY = Math.round(Math.max(0, Math.min(imgH - cropSide, cropY)));
+  }
+
+  // Display area: image scaled to fit 440×580 centered
+  const areaW = 440;
+  const areaH = 580;
+  const areaX = (WIDTH - areaW) / 2;
+  const areaY = 60;
+
+  const imgScale = Math.min(areaW / imgW, areaH / imgH);
+  const dispW = imgW * imgScale;
+  const dispH = imgH * imgScale;
+  const dispX = areaX + (areaW - dispW) / 2;
+  const dispY = areaY + (areaH - dispH) / 2;
+
+  // Title
+  k.add([
+    k.text("Drag to move, corners to resize", { size: 20 }),
+    k.pos(WIDTH / 2, 30),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(10),
+  ]);
+
+  // Full image (z=1)
+  const imgKey = `crop_preview_${Date.now()}`;
+  const imgCanvas = document.createElement("canvas");
+  imgCanvas.width = imgW;
+  imgCanvas.height = imgH;
+  imgCanvas.getContext("2d")!.drawImage(img, 0, 0);
+  k.loadSprite(imgKey, imgCanvas.toDataURL());
+
+  k.add([
+    k.sprite(imgKey, { width: dispW, height: dispH }),
+    k.pos(dispX, dispY),
+    k.z(1),
+  ]);
+
+  // Dark overlay rects (z=2) — four rects around the crop area
+  function imgToDisp(ix: number, iy: number) {
+    return { x: dispX + ix * imgScale, y: dispY + iy * imgScale };
+  }
+
+  const dimColor = k.Color.fromArray([0, 0, 0]);
+  const dimOpacity = 0.6;
+
+  const dimTop = k.add([k.rect(1, 1), k.pos(0, 0), k.color(dimColor), k.opacity(dimOpacity), k.z(2)]);
+  const dimBottom = k.add([k.rect(1, 1), k.pos(0, 0), k.color(dimColor), k.opacity(dimOpacity), k.z(2)]);
+  const dimLeft = k.add([k.rect(1, 1), k.pos(0, 0), k.color(dimColor), k.opacity(dimOpacity), k.z(2)]);
+  const dimRight = k.add([k.rect(1, 1), k.pos(0, 0), k.color(dimColor), k.opacity(dimOpacity), k.z(2)]);
+
+  // Gold border (z=3)
+  const borderThickness = 2;
+  const borderTop = k.add([k.rect(1, borderThickness), k.pos(0, 0), k.color(255, 215, 0), k.z(3)]);
+  const borderBottom = k.add([k.rect(1, borderThickness), k.pos(0, 0), k.color(255, 215, 0), k.z(3)]);
+  const borderLeft = k.add([k.rect(borderThickness, 1), k.pos(0, 0), k.color(255, 215, 0), k.z(3)]);
+  const borderRight = k.add([k.rect(borderThickness, 1), k.pos(0, 0), k.color(255, 215, 0), k.z(3)]);
+
+  // Corner handles (z=4) — small gold squares at crop corners
+  const handleSize = 14;
+  const goldColor = k.Color.fromArray([255, 215, 0]);
+  const handleTL = k.add([k.rect(handleSize, handleSize), k.pos(0, 0), k.color(goldColor), k.z(4)]);
+  const handleTR = k.add([k.rect(handleSize, handleSize), k.pos(0, 0), k.color(goldColor), k.z(4)]);
+  const handleBL = k.add([k.rect(handleSize, handleSize), k.pos(0, 0), k.color(goldColor), k.z(4)]);
+  const handleBR = k.add([k.rect(handleSize, handleSize), k.pos(0, 0), k.color(goldColor), k.z(4)]);
+
+  function updateOverlay() {
+    const tl = imgToDisp(cropX, cropY);
+    const br = imgToDisp(cropX + cropSide, cropY + cropSide);
+    const cropDispW = br.x - tl.x;
+    const cropDispH = br.y - tl.y;
+
+    // Dim rects
+    dimTop.pos.x = dispX;
+    dimTop.pos.y = dispY;
+    dimTop.width = dispW;
+    dimTop.height = Math.max(0, tl.y - dispY);
+
+    dimBottom.pos.x = dispX;
+    dimBottom.pos.y = br.y;
+    dimBottom.width = dispW;
+    dimBottom.height = Math.max(0, dispY + dispH - br.y);
+
+    dimLeft.pos.x = dispX;
+    dimLeft.pos.y = tl.y;
+    dimLeft.width = Math.max(0, tl.x - dispX);
+    dimLeft.height = cropDispH;
+
+    dimRight.pos.x = br.x;
+    dimRight.pos.y = tl.y;
+    dimRight.width = Math.max(0, dispX + dispW - br.x);
+    dimRight.height = cropDispH;
+
+    // Gold border
+    borderTop.pos.x = tl.x;
+    borderTop.pos.y = tl.y;
+    borderTop.width = cropDispW;
+
+    borderBottom.pos.x = tl.x;
+    borderBottom.pos.y = br.y - borderThickness;
+    borderBottom.width = cropDispW;
+
+    borderLeft.pos.x = tl.x;
+    borderLeft.pos.y = tl.y;
+    borderLeft.height = cropDispH;
+
+    borderRight.pos.x = br.x - borderThickness;
+    borderRight.pos.y = tl.y;
+    borderRight.height = cropDispH;
+
+    // Corner handles (centered on each corner)
+    const hh = handleSize / 2;
+    handleTL.pos.x = tl.x - hh;
+    handleTL.pos.y = tl.y - hh;
+    handleTR.pos.x = br.x - hh;
+    handleTR.pos.y = tl.y - hh;
+    handleBL.pos.x = tl.x - hh;
+    handleBL.pos.y = br.y - hh;
+    handleBR.pos.x = br.x - hh;
+    handleBR.pos.y = br.y - hh;
+  }
+
+  updateOverlay();
+
+  // Drag interaction — mode-based: pan or resize
+  type DragMode = "none" | "pan" | "resize";
+  type Corner = "tl" | "tr" | "bl" | "br";
+  let dragMode: DragMode = "none";
+  let resizeCorner: Corner = "tl";
+  let dragStartMouseX = 0;
+  let dragStartMouseY = 0;
+  let dragStartCropX = 0;
+  let dragStartCropY = 0;
+  let dragStartCropSide = 0;
+
+  const handleHitRadius = 12; // display px
+
+  function nearCorner(mp: { x: number; y: number }): Corner | null {
+    const tl = imgToDisp(cropX, cropY);
+    const br = imgToDisp(cropX + cropSide, cropY + cropSide);
+    const corners: [Corner, number, number][] = [
+      ["tl", tl.x, tl.y],
+      ["tr", br.x, tl.y],
+      ["bl", tl.x, br.y],
+      ["br", br.x, br.y],
+    ];
+    for (const [name, cx, cy] of corners) {
+      if (Math.abs(mp.x - cx) <= handleHitRadius && Math.abs(mp.y - cy) <= handleHitRadius) {
+        return name;
+      }
+    }
+    return null;
+  }
+
+  function insideCrop(mp: { x: number; y: number }): boolean {
+    const tl = imgToDisp(cropX, cropY);
+    const br = imgToDisp(cropX + cropSide, cropY + cropSide);
+    return mp.x >= tl.x && mp.x <= br.x && mp.y >= tl.y && mp.y <= br.y;
+  }
+
+  k.onMousePress(() => {
+    const mp = k.mousePos();
+    const corner = nearCorner(mp);
+    if (corner) {
+      dragMode = "resize";
+      resizeCorner = corner;
+    } else if (insideCrop(mp)) {
+      dragMode = "pan";
+    } else {
+      return;
+    }
+    dragStartMouseX = mp.x;
+    dragStartMouseY = mp.y;
+    dragStartCropX = cropX;
+    dragStartCropY = cropY;
+    dragStartCropSide = cropSide;
+  });
+
+  k.onMouseMove(() => {
+    if (dragMode === "none") return;
+    const mp = k.mousePos();
+    const dx = (mp.x - dragStartMouseX) / imgScale;
+    const dy = (mp.y - dragStartMouseY) / imgScale;
+
+    if (dragMode === "pan") {
+      cropX = dragStartCropX + dx;
+      cropY = dragStartCropY + dy;
+      clampCrop();
+    } else {
+      // Resize: use the larger axis delta to keep square
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      const delta = Math.max(absDx, absDy);
+
+      // Determine sign based on corner and drag direction:
+      // dragging away from the opposite (pinned) corner → grow,
+      // dragging toward → shrink
+      let sizeDelta: number;
+      if (resizeCorner === "br") {
+        sizeDelta = (dx + dy > 0 ? 1 : -1) * delta;
+      } else if (resizeCorner === "bl") {
+        sizeDelta = (-dx + dy > 0 ? 1 : -1) * delta;
+      } else if (resizeCorner === "tr") {
+        sizeDelta = (dx - dy > 0 ? 1 : -1) * delta;
+      } else {
+        // tl: dragging up-left grows, down-right shrinks
+        sizeDelta = (-dx - dy > 0 ? 1 : -1) * delta;
+      }
+
+      const newSide = Math.max(minSide, Math.min(maxSide, dragStartCropSide + sizeDelta));
+
+      // Pin the opposite corner
+      if (resizeCorner === "tl") {
+        // pin bottom-right
+        const pinnedR = dragStartCropX + dragStartCropSide;
+        const pinnedB = dragStartCropY + dragStartCropSide;
+        cropSide = newSide;
+        cropX = pinnedR - cropSide;
+        cropY = pinnedB - cropSide;
+      } else if (resizeCorner === "tr") {
+        // pin bottom-left
+        const pinnedB = dragStartCropY + dragStartCropSide;
+        cropSide = newSide;
+        cropX = dragStartCropX;
+        cropY = pinnedB - cropSide;
+      } else if (resizeCorner === "bl") {
+        // pin top-right
+        const pinnedR = dragStartCropX + dragStartCropSide;
+        cropSide = newSide;
+        cropX = pinnedR - cropSide;
+        cropY = dragStartCropY;
+      } else {
+        // br: pin top-left
+        cropSide = newSide;
+        cropX = dragStartCropX;
+        cropY = dragStartCropY;
+      }
+      clampCrop();
+    }
+    updateOverlay();
+  });
+
+  k.onMouseRelease(() => {
+    dragMode = "none";
+  });
+
+  // OK button
+  const okY = 670;
+  const okBtn = k.add([
+    k.rect(120, 44, { radius: 8 }),
+    k.pos(WIDTH / 2, okY),
     k.anchor("center"),
     k.color(70, 160, 70),
     k.area(),
     k.z(10),
   ]);
   k.add([
-    k.text("Play", { size: 26 }),
-    k.pos(WIDTH / 2, playY),
+    k.text("OK", { size: 22 }),
+    k.pos(WIDTH / 2, okY),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(11),
   ]);
 
-  playBtn.onClick(async () => {
-    unlockAudio();
-    const imgSrc =
-      selectedImage === "custom" ? customImageSrc : IMAGE_URLS[selectedImage];
-    if (!imgSrc) return;
-
-    const img = await loadImage(imgSrc);
-    const spriteKeys = sliceAndRegister(k, img);
+  okBtn.onClick(() => {
+    const spriteKeys = sliceAndRegister(k, img, { sx: cropX, sy: cropY, side: cropSide });
     k.go("game", { spriteKeys });
   });
 });
@@ -289,7 +584,7 @@ k.scene("game", ({ spriteKeys }: GameArgs) => {
 
   // ── Header ──
   k.add([
-    k.text("Image Scramble", { size: 24 }),
+    k.text("Sliding Puzzle", { size: 24 }),
     k.pos(WIDTH / 2, HEADER_Y + 12),
     k.anchor("center"),
     k.color(255, 255, 255),

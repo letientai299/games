@@ -115,19 +115,26 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+export interface CropRegion {
+  sx: number;
+  sy: number;
+  side: number; // image-pixel coords
+}
+
 /**
  * Slice an image into grid tiles and register them as Kaplay sprites.
- * The image is center-cropped to a square before slicing.
+ * When crop is omitted the image is center-cropped to a square.
  * Returns the sprite keys for each tile (row-major, excluding the last tile which is blank).
  */
 export function sliceAndRegister(
   k: KAPLAYCtx,
   img: HTMLImageElement,
+  crop?: CropRegion,
 ): string[][] {
   generation++;
-  const side = Math.min(img.width, img.height);
-  const sx = (img.width - side) / 2;
-  const sy = (img.height - side) / 2;
+  const side = crop?.side ?? Math.min(img.width, img.height);
+  const sx = crop?.sx ?? (img.width - side) / 2;
+  const sy = crop?.sy ?? (img.height - side) / 2;
 
   const tilePixels = Math.ceil(side / GRID_SIZE);
   const keys: string[][] = [];

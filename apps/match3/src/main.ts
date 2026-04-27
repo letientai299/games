@@ -132,7 +132,7 @@ k.scene("title", () => {
     k.z(11),
   ]);
   homeBtn.onClick(() => {
-    window.location.href = "/";
+    window.location.href = "../";
   });
 
   // Helper: button with icon (emoji) on the left, text on the right
