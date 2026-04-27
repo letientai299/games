@@ -5,9 +5,5 @@
   "type": "module",
   "displayName": "Caro",
   "description": "Get five in a row on an infinite board",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  }
+  "scripts": {}
 }

@@ -9,8 +9,9 @@ const apps = readdirSync(appsDir, { withFileTypes: true })
 
 const appSet = new Set(apps);
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root: ".",
+  base: command === "build" ? "/games/" : "/",
   appType: "mpa",
   plugins: [
     {
@@ -35,6 +36,7 @@ export default defineConfig({
   ],
   server: {
     open: "/",
+    allowedHosts: ["m2"],
   },
   build: {
     rollupOptions: {
@@ -49,4 +51,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

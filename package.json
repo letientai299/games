@@ -4,8 +4,8 @@
   "scripts": {
     "predev": "node --experimental-strip-types home/generate.ts",
     "dev": "vite",
-    "build": "pnpm -r build",
-    "build:home": "pnpm --filter home build",
+    "build": "node --experimental-strip-types home/generate.ts /games/ && vite build",
+    "typecheck": "pnpm -r exec tsc --noEmit",
     "lint": "eslint --fix .",
     "fmt": "prettier --write ."
   },

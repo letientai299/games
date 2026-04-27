@@ -5,9 +5,5 @@
   "type": "module",
   "displayName": "Image Scramble",
   "description": "Unscramble the picture by sliding tiles",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  }
+  "scripts": {}
 }

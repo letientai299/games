@@ -5,9 +5,5 @@
   "type": "module",
   "displayName": "Memory Pairs",
   "description": "Find matching pairs by flipping cards",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  }
+  "scripts": {}
 }
