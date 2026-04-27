@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["kaplay/global"]
+    "types": ["kaplay/global", "vite/client"]
   },
   "include": ["src"]
 }

@@ -1,0 +1,11 @@
+{
+  "name": "sliding-puzzle",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "displayName": "Sliding Puzzle",
+  "description": "Unscramble the picture by sliding tiles",
+  "scripts": {
+    "build": "GAME=$npm_package_name vite build -c ../../vite.game.config.ts"
+  }
+}

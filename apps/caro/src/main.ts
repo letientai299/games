@@ -57,6 +57,23 @@ function getAiWorker(): Worker {
 k.scene("menu", () => {
   document.getElementById("loading")?.remove();
 
+  // Back to game picker
+  const backBtn = k.add([
+    k.rect(40, 40, { radius: 10 }),
+    k.pos(16, 16),
+    k.color(50, 50, 80),
+    k.area(),
+  ]);
+  k.add([
+    k.text("\ue9b2", { size: 26, font: ICON_FONT }),
+    k.pos(36, 36),
+    k.anchor("center"),
+    k.color(200, 200, 220),
+  ]);
+  backBtn.onClick(() => {
+    window.location.href = "../";
+  });
+
   k.add([
     k.text("Caro", { size: 56 }),
     k.pos(WIDTH / 2, 150),
