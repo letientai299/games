@@ -247,10 +247,11 @@ k.scene("game", ({ mode }: { mode: GameMode }) => {
   });
 
   k.onMouseRelease("left", () => {
+    const wasMenuOpen = menuOpen;
     if (menuOpen && panStart && panStart.y >= UI_HEIGHT) {
       closeMenu();
     }
-    if (!didPan && !locked && panStart && panStart.y >= UI_HEIGHT) {
+    if (!wasMenuOpen && !didPan && !locked && panStart && panStart.y >= UI_HEIGHT) {
       handleClick(k.mousePos());
     }
     isPanning = false;
