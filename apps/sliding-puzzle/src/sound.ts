@@ -66,7 +66,8 @@ function bufToDataURL(buf: AudioBuffer): string {
   const view = new DataView(buffer);
 
   function writeStr(offset: number, str: string) {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    for (let i = 0; i < str.length; i++)
+      view.setUint8(offset + i, str.charCodeAt(i));
   }
 
   writeStr(0, "RIFF");
@@ -116,7 +117,8 @@ export function loadSounds(k: KAPLAYCtx) {
     for (let i = 0; i < noteLen; i++) {
       const t = i / sampleRate;
       const envelope = 1 - i / noteLen;
-      winData[startSample + i] = Math.sin(2 * Math.PI * notes[n] * t) * envelope * 0.3;
+      winData[startSample + i] =
+        Math.sin(2 * Math.PI * notes[n] * t) * envelope * 0.3;
     }
   }
   k.loadSound("win", bufToDataURL(winBuf));
