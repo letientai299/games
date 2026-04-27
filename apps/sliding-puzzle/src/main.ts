@@ -29,6 +29,7 @@ import {
   BLANK_FRAME_SPRITE_KEY,
 } from "./slicer";
 import { solve } from "./solver";
+import { loadSounds, unlockAudio, playSlide, playWin } from "./sound";
 
 // Asset imports
 import bulbasaurUrl from "./assets/bulbasaur.png";
@@ -61,6 +62,8 @@ const k = kaplay({
   pixelDensity: devicePixelRatio,
   canvas,
 });
+
+loadSounds(k);
 
 // Shared state between scenes
 let selectedImage: PokemonName | "custom" = "bulbasaur";
@@ -300,6 +303,7 @@ k.scene("menu", () => {
   ]);
 
   playBtn.onClick(async () => {
+    unlockAudio();
     const imgSrc =
       selectedImage === "custom" ? customImageSrc : IMAGE_URLS[selectedImage];
     if (!imgSrc) return;
@@ -543,6 +547,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
   // ── Win state (stay on board) ──
   function showWinState() {
     running = false;
+    playWin(k);
 
     // Save best
     const key = BEST_KEY_PREFIX + gridSize;
@@ -694,6 +699,7 @@ k.scene("game", ({ gridSize, spriteKeys }: GameArgs) => {
 
   // ── Animate a tile move ──
   function animateMove(clickIdx: number, countMove = true) {
+    playSlide(k);
     const blankCol = board.blankIdx % gridSize;
     const blankRow = Math.floor(board.blankIdx / gridSize);
     const targetPos = tileToPixel(blankCol, blankRow, gridSize);
