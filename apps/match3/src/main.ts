@@ -16,6 +16,7 @@ import {
   createBoard,
   swapCells,
   findMatches,
+  findValidMove,
   scoreMatches,
   applyGravity,
   fillEmpty,
@@ -75,12 +76,43 @@ for (const name of GEM_NAMES) {
 }
 loadSounds(k);
 
-// iOS requires AudioContext.resume() in a synchronous user gesture handler.
-// Kaplay's play() calls resume() internally but it runs after await chains,
-// which iOS doesn't consider a gesture. Resume eagerly on every press.
-function unlockAudio() {
-  if (k.audioCtx.state === "suspended") k.audioCtx.resume();
-}
+// ── Title scene ─────────────────────────────────────────────
+
+k.scene("title", () => {
+  k.add([
+    k.text("Pokemon Match", { size: 40 }),
+    k.pos(k.center().x, 240),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+  ]);
+
+  const best = parseInt(localStorage.getItem(HIGH_SCORE_KEY) ?? "0");
+  if (best > 0) {
+    k.add([
+      k.text(`Best: ${best}`, { size: 22 }),
+      k.pos(k.center().x, 300),
+      k.anchor("center"),
+      k.color(180, 180, 180),
+    ]);
+  }
+
+  k.add([
+    k.text("Tap to Play", { size: 26 }),
+    k.pos(k.center().x, 420),
+    k.anchor("center"),
+    k.color(200, 200, 200),
+  ]);
+
+  // The tap that starts the game also unlocks audio (iOS requirement)
+  canvas.addEventListener(
+    "pointerdown",
+    () => {
+      if (k.audioCtx.state === "suspended") k.audioCtx.resume();
+      k.go("game");
+    },
+    { once: true },
+  );
+});
 
 // ── Game scene ──────────────────────────────────────────────
 
@@ -95,6 +127,12 @@ k.scene("game", () => {
   const STREAK_TIMEOUT = 5; // seconds before streak resets
   let streak = 0;
   let lastMoveTime = 0;
+
+  // Hints: start with 3, earn 1 per 1000 points
+  const HINT_START = 3;
+  const HINT_INTERVAL = 1000;
+  let hintsUsed = 0;
+  let hintHighlights: ReturnType<typeof k.add>[] = [];
 
   // Generate a board that isn't deadlocked
   function initBoard() {
@@ -119,6 +157,82 @@ k.scene("game", () => {
     k.color(180, 180, 180),
     k.z(10),
   ]);
+
+  function getHintsRemaining() {
+    const earned = HINT_START + Math.floor(score / HINT_INTERVAL);
+    return Math.max(earned - hintsUsed, 0);
+  }
+
+  // Hint button — below the board
+  const HINT_Y = BOARD_TOP + ROWS * CELL_SIZE + 40;
+  const hintBtn = k.add([
+    k.rect(140, 50, { radius: 10 }),
+    k.pos(k.center().x, HINT_Y),
+    k.anchor("center"),
+    k.color(80, 80, 140),
+    k.area(),
+    k.z(10),
+  ]);
+  const hintLabel = k.add([
+    k.text(`Hint (${getHintsRemaining()})`, { size: 22 }),
+    k.pos(k.center().x, HINT_Y),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(11),
+  ]);
+
+  function updateHintLabel() {
+    hintLabel.text = `Hint (${getHintsRemaining()})`;
+    hintBtn.color = k.rgb(
+      getHintsRemaining() > 0 ? 80 : 50,
+      getHintsRemaining() > 0 ? 80 : 50,
+      getHintsRemaining() > 0 ? 140 : 80,
+    );
+  }
+
+  function clearHintHighlights() {
+    for (const h of hintHighlights) h.destroy();
+    hintHighlights = [];
+  }
+
+  function showHint() {
+    if (locked || getHintsRemaining() <= 0) return;
+    clearHintHighlights();
+    const move = findValidMove(board);
+    if (!move) return;
+    hintsUsed++;
+    updateHintLabel();
+
+    // Highlight both gems in the valid swap with a pulsing green border
+    for (const pos of [move.a, move.b]) {
+      const { x, y } = gridToPixel(pos.col, pos.row);
+      const h = k.add([
+        k.rect(CELL_SIZE - 2, CELL_SIZE - 2, { radius: 6 }),
+        k.pos(x, y),
+        k.anchor("center"),
+        k.color(100, 255, 100),
+        k.opacity(0.5),
+        k.timer(),
+        k.z(3),
+      ]);
+      // Pulse animation
+      h.loop(0.5, () => {
+        h.tween(
+          0.5,
+          0.2,
+          0.5,
+          (v: number) => (h.opacity = v),
+          k.easings.easeInOutSine,
+        );
+      });
+      hintHighlights.push(h);
+    }
+
+    // Auto-clear after 3 seconds
+    k.wait(3, clearHintHighlights);
+  }
+
+  hintBtn.onClick(showHint);
 
   // Board background
   k.add([
@@ -236,7 +350,6 @@ k.scene("game", () => {
   }
 
   k.onMousePress(() => {
-    unlockAudio();
     if (locked) return;
     const mp = k.mousePos();
     const gp = pixelToGrid(mp.x, mp.y);
@@ -295,6 +408,7 @@ k.scene("game", () => {
   async function handleSwap(a: GridPos, b: GridPos) {
     locked = true;
     clearHighlight();
+    clearHintHighlights();
 
     const gemA = gems[a.row][a.col]!;
     const gemB = gems[b.row][b.col]!;
@@ -360,6 +474,7 @@ k.scene("game", () => {
 
       score += totalPoints;
       scoreLabel.text = `Score: ${score}`;
+      updateHintLabel();
 
       // Build bonus label
       const bonusParts: string[] = [];
@@ -482,4 +597,4 @@ k.scene("gameover", ({ score }: { score: number }) => {
 });
 
 // Start
-k.go("game");
+k.go("title");

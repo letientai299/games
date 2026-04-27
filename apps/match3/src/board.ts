@@ -181,24 +181,29 @@ export function fillEmpty(
   return added;
 }
 
-export function isDeadlocked(board: Board): boolean {
+/** Find a valid swap that produces a match. Returns null if deadlocked. */
+export function findValidMove(
+  board: Board,
+): { a: { row: number; col: number }; b: { row: number; col: number } } | null {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      // Try swap right
       if (c + 1 < COLS) {
         swapCells(board, { row: r, col: c }, { row: r, col: c + 1 });
         const has = findMatches(board).size > 0;
         swapCells(board, { row: r, col: c }, { row: r, col: c + 1 });
-        if (has) return false;
+        if (has) return { a: { row: r, col: c }, b: { row: r, col: c + 1 } };
       }
-      // Try swap down
       if (r + 1 < ROWS) {
         swapCells(board, { row: r, col: c }, { row: r + 1, col: c });
         const has = findMatches(board).size > 0;
         swapCells(board, { row: r, col: c }, { row: r + 1, col: c });
-        if (has) return false;
+        if (has) return { a: { row: r, col: c }, b: { row: r + 1, col: c } };
       }
     }
   }
-  return true;
+  return null;
+}
+
+export function isDeadlocked(board: Board): boolean {
+  return findValidMove(board) === null;
 }
