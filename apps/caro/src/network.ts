@@ -5,12 +5,14 @@ const APP_ID = `letientai.io/games/caro--${__GIT_SHA__}`;
 const CODE_CHARS = "0123456789";
 const CODE_LENGTH = 4;
 
-// Pinned relays verified reachable — avoids Trystero's random picks from its
-// large default list where many are slow or down.
 const RELAY_URLS = [
   "wss://nos.lol",
   "wss://relay.primal.net",
   "wss://relay.mostr.pub",
+  "wss://hol.is",
+  "wss://nostr.mom",
+  "wss://relay.nostr.place",
+  "wss://nostr.data.haus",
 ];
 
 export type NetworkEvent =
@@ -51,6 +53,20 @@ function readRelayStatuses(): RelayInfo[] {
   });
 }
 
+let warmupRoom: ReturnType<typeof joinRoom> | null = null;
+
+/** Pre-connect to relays so joinRoom is near-instant later. */
+export function warmupRelays(): void {
+  if (warmupRoom) return;
+  warmupRoom = joinRoom({ appId: APP_ID, relayUrls: RELAY_URLS }, "__warmup__");
+}
+
+/** Release the warmup room (call after the real room is joined). */
+function releaseWarmup(): void {
+  warmupRoom?.leave();
+  warmupRoom = null;
+}
+
 export function connectToRoom(
   code: string,
   onEvent: (event: NetworkEvent) => void,
@@ -59,6 +75,7 @@ export function connectToRoom(
 
   console.log(`[net] joining room "${code}" with appId "${APP_ID}"`);
   const room = joinRoom({ appId: APP_ID, relayUrls: RELAY_URLS }, code);
+  releaseWarmup();
 
   const [sendMove, onMove] = room.makeAction<{ row: number; col: number }>(
     "move",

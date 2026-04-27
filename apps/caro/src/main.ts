@@ -23,6 +23,7 @@ import materialSymbolsUrl from "./assets/fonts/material-symbols.ttf";
 import {
   connectToRoom,
   generateRoomCode,
+  warmupRelays,
   type NetworkHandle,
   type NetworkEvent,
   type RelayInfo,
@@ -241,34 +242,14 @@ function createRelayStatusUI(
   getNet: () => NetworkHandle | null,
 ) {
   const labels: ReturnType<typeof k.add>[] = [];
-  const LINE_H = 18;
   const startX = 24;
-  const RELAY_COUNT = 3; // matches RELAY_URLS length
 
-  const title = kRef.add([
-    kRef.text("Relays", { size: 13 }),
-    kRef.pos(startX, baseY),
-    kRef.color(120, 120, 150),
-  ]);
-  labels.push(title);
-
-  const relayLabels: ReturnType<typeof k.add>[] = [];
-  for (let i = 0; i < RELAY_COUNT; i++) {
-    const label = kRef.add([
-      kRef.text("", { size: 12 }),
-      kRef.pos(startX + 8, baseY + LINE_H * (i + 1)),
-      kRef.color(150, 150, 150),
-    ]);
-    relayLabels.push(label);
-    labels.push(label);
-  }
-
-  const phaseLabel = kRef.add([
+  const statusLabel = kRef.add([
     kRef.text("", { size: 13 }),
-    kRef.pos(startX, baseY + LINE_H * (RELAY_COUNT + 1) + 4),
+    kRef.pos(startX, baseY),
     kRef.color(150, 150, 150),
   ]);
-  labels.push(phaseLabel);
+  labels.push(statusLabel);
 
   let allOpenSince: number | null = null;
 
@@ -277,28 +258,22 @@ function createRelayStatusUI(
     if (!net) return;
     const statuses: RelayInfo[] = net.getRelayStatuses();
     let openCount = 0;
-    for (let i = 0; i < statuses.length && i < relayLabels.length; i++) {
-      const { url, status } = statuses[i];
-      const short = url.replace("wss://", "");
-      const icon = RELAY_ICONS[status];
-      const color = RELAY_COLORS[status];
-      relayLabels[i].text = `${icon} ${short}`;
-      relayLabels[i].color = kRef.rgb(...color);
+    for (const { status } of statuses) {
       if (status === "open") openCount++;
     }
 
-    if (openCount === statuses.length && statuses.length > 0) {
+    if (openCount >= statuses.length && statuses.length > 0) {
       if (!allOpenSince) allOpenSince = Date.now();
       const elapsed = Math.floor((Date.now() - allOpenSince) / 1000);
-      phaseLabel.text = `Searching for peer... ${elapsed}s`;
-      phaseLabel.color = kRef.rgb(120, 180, 160);
+      statusLabel.text = `${openCount}/${statuses.length} relays | Searching for peer... ${elapsed}s`;
+      statusLabel.color = kRef.rgb(120, 180, 160);
     } else if (openCount > 0) {
-      phaseLabel.text = `${openCount}/${statuses.length} relays connected`;
-      phaseLabel.color = kRef.rgb(180, 180, 100);
+      statusLabel.text = `Relays: ${openCount}/${statuses.length} connected`;
+      statusLabel.color = kRef.rgb(180, 180, 100);
       allOpenSince = null;
     } else {
-      phaseLabel.text = "Connecting to relays...";
-      phaseLabel.color = kRef.rgb(150, 150, 150);
+      statusLabel.text = "Connecting to relays...";
+      statusLabel.color = kRef.rgb(150, 150, 150);
       allOpenSince = null;
     }
   }
@@ -323,6 +298,7 @@ k.scene(
     });
 
     function drawPick() {
+      warmupRelays();
       k.add([
         k.text("Online Play", { size: 40 }),
         k.pos(WIDTH / 2, 120),
