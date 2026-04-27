@@ -75,14 +75,12 @@ for (const name of GEM_NAMES) {
 }
 loadSounds(k);
 
-// iOS requires AudioContext resume on first user gesture
-document.addEventListener(
-  "touchstart",
-  () => {
-    if (k.audioCtx.state === "suspended") k.audioCtx.resume();
-  },
-  { once: true },
-);
+// iOS requires AudioContext.resume() in a synchronous user gesture handler.
+// Kaplay's play() calls resume() internally but it runs after await chains,
+// which iOS doesn't consider a gesture. Resume eagerly on every press.
+function unlockAudio() {
+  if (k.audioCtx.state === "suspended") k.audioCtx.resume();
+}
 
 // ── Game scene ──────────────────────────────────────────────
 
@@ -238,6 +236,7 @@ k.scene("game", () => {
   }
 
   k.onMousePress(() => {
+    unlockAudio();
     if (locked) return;
     const mp = k.mousePos();
     const gp = pixelToGrid(mp.x, mp.y);
